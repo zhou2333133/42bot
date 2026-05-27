@@ -23,8 +23,7 @@ describe("evaluateExecutionReadiness", () => {
       loadConfig({
         LIVE_TRADING: "true",
         BSC_HTTP_RPC: "https://example.invalid",
-        WALLET_ADDRESS: "0x0000000000000000000000000000000000000001",
-        PRIVATE_KEY: "redacted"
+        PRIVATE_KEY: "0x0123456789012345678901234567890123456789012345678901234567890123"
       }),
       { liveReady: false, pass: 1, warn: 1, fail: 0, reasons: ["rpc missing"] }
     );

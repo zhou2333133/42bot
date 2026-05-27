@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { isAbsolute, resolve } from "node:path";
+import { privateKeyToAccount } from "viem/accounts";
 import { z } from "zod";
 
 const booleanString = z
@@ -23,18 +24,18 @@ const numberString = (fallback: number) =>
 const envSchema = z.object({
   NODE_ENV: z.string().default("development"),
   FORTYTWO_REST_BASE: z.string().url().default("https://rest.ft.42.space"),
-  BSC_HTTP_RPC: z.string().optional().default(""),
+  BSC_HTTP_RPC: z.string().optional().default("https://bsc-dataseed.binance.org"),
   BSC_WS_RPC: z.string().optional().default(""),
   WALLET_ADDRESS: z.string().optional().default(""),
   PRIVATE_KEY: z.string().optional().default(""),
   LIVE_TRADING: booleanString.default(false),
-  MAX_TRADE_USDT: numberString(5),
-  DAILY_MAX_USDT: numberString(30),
-  MAX_OPEN_POSITIONS: numberString(3),
-  MAX_SLIPPAGE_BPS: numberString(1000),
+  MAX_TRADE_USDT: numberString(3),
+  DAILY_MAX_USDT: numberString(10),
+  MAX_OPEN_POSITIONS: numberString(1),
+  MAX_SLIPPAGE_BPS: numberString(500),
   MAX_GAS_GWEI: numberString(5),
   KILL_SWITCH: booleanString.default(true),
-  LIVE_TRADING_CONFIRMATION: z.string().optional().default(""),
+  LIVE_TRADING_CONFIRMATION: z.string().optional().default("I_UNDERSTAND_42BOT_LIVE_RISK"),
   INTEGRATOR_ADDRESS: z.string().optional().default(""),
   INTEGRATOR_FEE_BPS: numberString(0),
   PROTOCOL_REPORT_JSON_PATH: z.string().default("./data/protocol-verification-latest.json"),
@@ -57,8 +58,12 @@ export type AppConfig = z.infer<typeof envSchema>;
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = envSchema.parse(env);
   const basePath = env.PROJECT_ROOT || env.INIT_CWD || process.cwd();
+  const privateKey = normalizePrivateKey(parsed.PRIVATE_KEY);
+  const walletAddress = parsed.WALLET_ADDRESS || deriveWalletAddress(privateKey);
   return {
     ...parsed,
+    PRIVATE_KEY: privateKey,
+    WALLET_ADDRESS: walletAddress,
     PROTOCOL_REPORT_JSON_PATH: resolveConfigPath(parsed.PROTOCOL_REPORT_JSON_PATH, basePath),
     SETTINGS_FILE: resolveConfigPath(parsed.SETTINGS_FILE, basePath),
     RUNTIME_LOG_FILE: resolveConfigPath(parsed.RUNTIME_LOG_FILE, basePath),
@@ -86,4 +91,19 @@ export function redactConfig(
 
 function resolveConfigPath(value: string, basePath: string): string {
   return isAbsolute(value) ? value : resolve(basePath, value);
+}
+
+function normalizePrivateKey(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return trimmed.startsWith("0x") ? trimmed : `0x${trimmed}`;
+}
+
+function deriveWalletAddress(privateKey: string): string {
+  if (!privateKey) return "";
+  try {
+    return privateKeyToAccount(privateKey as `0x${string}`).address;
+  } catch {
+    return "";
+  }
 }

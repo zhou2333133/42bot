@@ -76,7 +76,21 @@ cp .env.example .env
 nano .env
 ```
 
-先用免费公共 BNB RPC，填这份最小配置：
+Windows 本机运行可以用：
+
+```powershell
+cd E:\42bot
+Copy-Item .env.example .env
+[guid]::NewGuid().ToString("N")
+notepad .env
+```
+
+`.env.example` 已经按本机和 VPS 小额测试填好默认值。第一次只需要改：
+
+- `API_AUTH_TOKEN`
+- 实盘前再填 `PRIVATE_KEY`
+
+默认配置内容类似这样：
 
 ```bash
 NODE_ENV=production
@@ -104,7 +118,7 @@ DAILY_MAX_USDT=10
 MAX_OPEN_POSITIONS=1
 MAX_SLIPPAGE_BPS=500
 MAX_GAS_GWEI=5
-LIVE_TRADING_CONFIRMATION=
+LIVE_TRADING_CONFIRMATION=I_UNDERSTAND_42BOT_LIVE_RISK
 ```
 
 生成面板登录令牌：
@@ -119,12 +133,13 @@ openssl rand -hex 32
 API_AUTH_TOKEN=这里填刚生成的值
 ```
 
-实盘前再填钱包：
+实盘前再填私钥：
 
 ```bash
-WALLET_ADDRESS=<专用小额热钱包地址>
 PRIVATE_KEY=<专用小额热钱包私钥>
 ```
+
+`WALLET_ADDRESS` 可以不填，程序会从 `PRIVATE_KEY` 自动推导。只有你想强制校验指定钱包地址时，才需要手动填 `WALLET_ADDRESS`。
 
 不要用主钱包。这个钱包只放 J/U 级别测试资金和少量 BNB 燃料费。
 
@@ -248,7 +263,6 @@ data/protocol-verification-latest.json
 
 ```bash
 BSC_HTTP_RPC=https://bsc-dataseed.binance.org
-WALLET_ADDRESS=<专用小额热钱包地址>
 PRIVATE_KEY=<专用小额热钱包私钥>
 LIVE_TRADING=true
 KILL_SWITCH=false
@@ -259,6 +273,8 @@ MAX_SLIPPAGE_BPS=500
 MAX_GAS_GWEI=5
 LIVE_TRADING_CONFIRMATION=I_UNDERSTAND_42BOT_LIVE_RISK
 ```
+
+`WALLET_ADDRESS` 仍然可以留空，由程序自动推导。
 
 重启容器让配置生效：
 

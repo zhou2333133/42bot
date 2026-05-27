@@ -60,7 +60,8 @@ describe("buildExecutionPlan", () => {
     expect(plan.quoteCheck.status).toBe("passed");
     expect(plan.transactions.map((tx) => tx.kind)).toEqual(["approve", "swap"]);
     expect(plan.broadcastReady).toBe(false);
-    expect(plan.broadcastReadiness.reasons.join(" ")).toContain("LIVE_TRADING_CONFIRMATION");
+    expect(plan.broadcastReadiness.configured).toBe(true);
+    expect(plan.broadcastReadiness.reasons).toContain("dry-run/preflight preconditions 未全部通过");
 
     const approve = plan.transactions[0];
     expect(approve?.to).toBe(BUSDT_ADDRESS);
@@ -113,6 +114,7 @@ describe("buildExecutionPlan", () => {
     const config = loadConfig({
       LIVE_TRADING: "true",
       KILL_SWITCH: "false",
+      LIVE_TRADING_CONFIRMATION: "",
       BSC_HTTP_RPC: "https://example.invalid",
       WALLET_ADDRESS: wallet,
       PRIVATE_KEY: privateKey,

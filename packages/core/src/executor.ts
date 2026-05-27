@@ -63,35 +63,49 @@ export async function buildExecutionPlan(options: BuildExecutionPlanOptions): Pr
   const protocolGate = await loadProtocolGate(options.config.PROTOCOL_REPORT_JSON_PATH);
   const risk = evaluateRisk(options.intent, configToRiskLimits(options.config), options.riskState ?? emptyRiskState());
   const readiness = evaluateExecutionReadiness(options.config, protocolGate, risk);
-  const client = options.publicClient ?? (options.config.BSC_HTTP_RPC ? createBscClient(options.config.BSC_HTTP_RPC) : undefined);
   const checks: ExecutionCheck[] = [];
   const transactions: PreparedExecutionTransaction[] = [];
   const blockedReasons = new Set<string>([...risk.reasons, ...readiness.reasons]);
+  const validMarketAddress = isAddress(options.intent.marketAddress);
+  if (!validMarketAddress) {
+    blockedReasons.add("marketAddress 不是有效 EVM 地址");
+  }
+  const shouldRunChainChecks = readiness.ready && validMarketAddress;
+  const client =
+    shouldRunChainChecks && options.config.BSC_HTTP_RPC
+      ? options.publicClient ?? createBscClient(options.config.BSC_HTTP_RPC)
+      : undefined;
 
-  let gas = emptyGasReadiness(options.config.MAX_GAS_GWEI, "BSC_HTTP_RPC 未配置，跳过 gas price 检查");
-  if (client) {
+  let gas = emptyGasReadiness(
+    options.config.MAX_GAS_GWEI,
+    shouldRunChainChecks ? "BSC_HTTP_RPC 未配置，跳过 gas price 检查" : "基础执行条件未满足，跳过 gas price 检查"
+  );
+  if (shouldRunChainChecks && client) {
     gas = await checkGasPrice(client, options.config.MAX_GAS_GWEI);
     if (!gas.withinCap) {
       gas.reasons.forEach((reason) => blockedReasons.add(reason));
     }
-  } else {
+  } else if (shouldRunChainChecks) {
     blockedReasons.add("BSC_HTTP_RPC 未配置，无法 quote/preflight");
   }
 
   let quoteCheck: ExecutionCheck = { status: "skipped", reason: "preconditions not met" };
   let quote: ExecutionPlan["quote"];
 
-  if (!isAddress(options.intent.marketAddress)) {
+  if (!validMarketAddress) {
     quoteCheck = { status: "failed", reason: "marketAddress 不是有效 EVM 地址" };
     blockedReasons.add(quoteCheck.reason ?? "invalid marketAddress");
+  } else if (!shouldRunChainChecks) {
+    quoteCheck = { status: "skipped", reason: "基础执行条件未满足" };
   } else if (!client) {
     quoteCheck = { status: "skipped", reason: "BSC_HTTP_RPC 未配置" };
   } else {
     try {
+      const marketAddress = options.intent.marketAddress as Address;
       quote =
         side === "buy"
           ? await quoteMintExactUsdt({
-              market: options.intent.marketAddress,
+              market: marketAddress,
               tokenId: BigInt(options.intent.tokenId),
               amountUsdt: options.intent.amountUsdt,
               slippageBps: options.intent.slippageBps,
@@ -102,7 +116,7 @@ export async function buildExecutionPlan(options: BuildExecutionPlanOptions): Pr
               }
             })
           : await quoteRedeemExactOt({
-              market: options.intent.marketAddress,
+              market: marketAddress,
               tokenId: BigInt(options.intent.tokenId),
               otAmount: usdtToUnits(options.intent.amountUsdt),
               slippageBps: options.intent.slippageBps,

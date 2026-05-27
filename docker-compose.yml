@@ -35,9 +35,6 @@ services:
     build:
       context: .
     command: npm --workspace @42bot/dashboard run preview -- --host 0.0.0.0 --port 4220
-    env_file:
-      - path: .env
-        required: false
     ports:
       - "4220:4220"
     restart: unless-stopped
