@@ -319,6 +319,59 @@ export interface ExecutionResult {
   error?: string;
 }
 
+export type JournalEntryStatus = "planned" | "blocked" | "submitted" | "confirmed" | "failed";
+
+export interface TradeJournalEntry {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  side: TradeSide;
+  status: JournalEntryStatus;
+  marketAddress: string;
+  tokenId: string;
+  amountUsdt: number;
+  slippageBps: number;
+  reason: string;
+  quote?: {
+    amountIn?: string;
+    otToUser?: string;
+    collateralToUser?: string;
+    minOut?: string;
+  };
+  transactionHashes: `0x${string}`[];
+  blockedReasons: string[];
+  error?: string;
+}
+
+export interface PositionSummary {
+  key: string;
+  marketAddress: string;
+  tokenId: string;
+  buyUsdt: number;
+  sellUsdt: number;
+  realizedPnlUsdt: number;
+  buyCount: number;
+  sellCount: number;
+  lastUpdatedAt: string;
+  open: boolean;
+}
+
+export interface JournalSummary {
+  updatedAt: string;
+  entries: TradeJournalEntry[];
+  positions: PositionSummary[];
+  totals: {
+    entries: number;
+    submitted: number;
+    confirmed: number;
+    failed: number;
+    blocked: number;
+    buyUsdt: number;
+    sellUsdt: number;
+    realizedPnlUsdt: number;
+  };
+}
+
 export interface BotSnapshot {
   updatedAt: string;
   config: {

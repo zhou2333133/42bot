@@ -19,6 +19,7 @@ Minimum observation-mode settings:
 ```bash
 API_AUTH_TOKEN=<generate-a-long-random-token>
 CORS_ORIGIN=http://your-vps-ip:4220
+VITE_API_AUTH_TOKEN=<same-token-for-private-dashboard-only>
 LIVE_TRADING=false
 KILL_SWITCH=true
 ```
@@ -30,6 +31,7 @@ BSC_HTTP_RPC=<private-or-paid-bsc-rpc>
 BSC_WS_RPC=<private-or-paid-bsc-websocket>
 WALLET_ADDRESS=<dedicated-hot-wallet-address>
 PRIVATE_KEY=<dedicated-hot-wallet-private-key>
+JOURNAL_FILE=./data/journal.json
 MAX_TRADE_USDT=3
 DAILY_MAX_USDT=10
 MAX_OPEN_POSITIONS=1
@@ -66,6 +68,8 @@ Protected API requests require:
 ```bash
 Authorization: Bearer <API_AUTH_TOKEN>
 ```
+
+`VITE_API_AUTH_TOKEN` is bundled into the dashboard build. Use it only for a private dashboard behind your firewall or reverse proxy; do not treat it as a secret if the dashboard is publicly reachable.
 
 ## 5. Firewall And Exposure
 

@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 import {
+  JsonJournalStore,
   JsonStateStore,
   buildExecutionPlan,
   buildSnapshot,
@@ -12,6 +13,7 @@ import { applySecurityHeaders, requireApiAuth } from "./security.js";
 
 const config = loadConfig();
 const store = new JsonStateStore(config.STATE_FILE);
+const journalStore = new JsonJournalStore(config.JOURNAL_FILE);
 const app = express();
 
 app.use(applySecurityHeaders);
@@ -68,6 +70,14 @@ app.get("/scores", async (_request, response, next) => {
     const snapshot = await loadSnapshot();
     const scores = [...snapshot.scores].sort(compareScores);
     response.json(scores);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/journal", async (_request, response, next) => {
+  try {
+    response.json(await journalStore.read());
   } catch (error) {
     next(error);
   }

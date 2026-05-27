@@ -168,7 +168,45 @@ interface ExecutionPlan {
   blockedReasons: string[];
 }
 
+interface JournalSummary {
+  updatedAt: string;
+  entries: Array<{
+    id: string;
+    createdAt: string;
+    side: "buy" | "sell";
+    status: "planned" | "blocked" | "submitted" | "confirmed" | "failed";
+    marketAddress: string;
+    tokenId: string;
+    amountUsdt: number;
+    reason: string;
+    transactionHashes: string[];
+    blockedReasons: string[];
+    error?: string;
+  }>;
+  positions: Array<{
+    key: string;
+    marketAddress: string;
+    tokenId: string;
+    buyUsdt: number;
+    sellUsdt: number;
+    realizedPnlUsdt: number;
+    open: boolean;
+  }>;
+  totals: {
+    entries: number;
+    submitted: number;
+    confirmed: number;
+    failed: number;
+    blocked: number;
+    buyUsdt: number;
+    sellUsdt: number;
+    realizedPnlUsdt: number;
+  };
+}
+
 const apiBase = import.meta.env.VITE_API_BASE ?? "http://localhost:4210";
+const apiAuthToken = import.meta.env.VITE_API_AUTH_TOKEN ?? "";
+const apiHeaders = apiAuthToken ? { Authorization: `Bearer ${apiAuthToken}` } : undefined;
 
 function App() {
   const [snapshot, setSnapshot] = React.useState<BotSnapshot | null>(null);
@@ -176,15 +214,21 @@ function App() {
   const [error, setError] = React.useState<string | null>(null);
   const [refreshing, setRefreshing] = React.useState(false);
   const [executionPlan, setExecutionPlan] = React.useState<ExecutionPlan | null>(null);
+  const [journal, setJournal] = React.useState<JournalSummary | null>(null);
   const [planError, setPlanError] = React.useState<string | null>(null);
   const [planning, setPlanning] = React.useState(false);
 
   const loadSnapshot = React.useCallback(async () => {
     setError(null);
     try {
-      const response = await fetch(`${apiBase}/snapshot`);
-      if (!response.ok) throw new Error(`API ${response.status}`);
-      setSnapshot((await response.json()) as BotSnapshot);
+      const [snapshotResponse, journalResponse] = await Promise.all([
+        fetch(`${apiBase}/snapshot`, { headers: apiHeaders }),
+        fetch(`${apiBase}/journal`, { headers: apiHeaders })
+      ]);
+      if (!snapshotResponse.ok) throw new Error(`snapshot API ${snapshotResponse.status}`);
+      if (!journalResponse.ok) throw new Error(`journal API ${journalResponse.status}`);
+      setSnapshot((await snapshotResponse.json()) as BotSnapshot);
+      setJournal((await journalResponse.json()) as JournalSummary);
     } catch (currentError) {
       setError(currentError instanceof Error ? currentError.message : "unknown error");
     } finally {
@@ -202,7 +246,7 @@ function App() {
     setRefreshing(true);
     setError(null);
     try {
-      const response = await fetch(`${apiBase}/refresh`, { method: "POST" });
+      const response = await fetch(`${apiBase}/refresh`, { method: "POST", headers: apiHeaders });
       if (!response.ok) throw new Error(`API ${response.status}`);
       setSnapshot((await response.json()) as BotSnapshot);
     } catch (currentError) {
@@ -232,7 +276,7 @@ function App() {
         slippageBps: "500",
         reason: "dashboard top candidate dry-run"
       });
-      const response = await fetch(`${apiBase}/execution/plan?${params.toString()}`);
+      const response = await fetch(`${apiBase}/execution/plan?${params.toString()}`, { headers: apiHeaders });
       if (!response.ok) throw new Error(`API ${response.status}`);
       setExecutionPlan((await response.json()) as ExecutionPlan);
     } catch (currentError) {
@@ -270,6 +314,51 @@ function App() {
         <Metric icon={<Activity size={18} />} label="Activity Rows" value={String(snapshot?.status.activitiesFetched ?? 0)} />
         <Metric icon={<ShieldCheck size={18} />} label="Live Trading" value={snapshot?.config.liveTrading ? "ON" : "OFF"} tone={snapshot?.config.liveTrading ? "warn" : "good"} />
         <Metric icon={<PauseCircle size={18} />} label="Kill Switch" value={snapshot?.config.killSwitch ? "ON" : "OFF"} tone={snapshot?.config.killSwitch ? "good" : "warn"} />
+      </section>
+
+      <section className="journalBand">
+        <div className="sectionTitle">
+          <h2>Journal</h2>
+          <span>trade records + PnL summary</span>
+        </div>
+        <div className="journalGrid">
+          <div className="panel">
+            <div className="riskGrid">
+              <Risk label="Entries" value={String(journal?.totals.entries ?? 0)} />
+              <Risk label="Confirmed" value={String(journal?.totals.confirmed ?? 0)} />
+              <Risk label="Failed" value={String(journal?.totals.failed ?? 0)} />
+              <Risk label="Blocked" value={String(journal?.totals.blocked ?? 0)} />
+              <Risk label="Buy" value={`${formatNumber(journal?.totals.buyUsdt ?? 0)} USDT`} />
+              <Risk label="Realized PnL" value={`${formatNumber(journal?.totals.realizedPnlUsdt ?? 0)} USDT`} />
+            </div>
+          </div>
+          <div className="panel journalList">
+            {(journal?.entries ?? []).slice(-6).reverse().map((entry) => (
+              <div className="txRow" key={entry.id}>
+                <div>
+                  <strong>{entry.side} · {entry.status}</strong>
+                  <span>{shortAddress(entry.marketAddress)} · token {entry.tokenId} · {formatNumber(entry.amountUsdt)} USDT</span>
+                  <span>{entry.reason}</span>
+                </div>
+                <span className={`pill ${entry.status === "confirmed" || entry.status === "submitted" ? "candidate" : "watch"}`}>{entry.status}</span>
+              </div>
+            ))}
+            {journal?.entries.length === 0 ? <div className="notice compact">还没有交易账本记录。实盘前这很正常。</div> : null}
+          </div>
+          <div className="panel journalList">
+            {(journal?.positions ?? []).slice(0, 6).map((position) => (
+              <div className="txRow" key={position.key}>
+                <div>
+                  <strong>{position.open ? "open" : "closed"} · token {position.tokenId}</strong>
+                  <span>{shortAddress(position.marketAddress)}</span>
+                  <span>buy {formatNumber(position.buyUsdt)} / sell {formatNumber(position.sellUsdt)} / pnl {formatNumber(position.realizedPnlUsdt)}</span>
+                </div>
+                <span className={`pill ${position.open ? "candidate" : "watch"}`}>{position.open ? "open" : "closed"}</span>
+              </div>
+            ))}
+            {journal?.positions.length === 0 ? <div className="notice compact">暂无持仓汇总。</div> : null}
+          </div>
+        </div>
       </section>
 
       <section className="grid">

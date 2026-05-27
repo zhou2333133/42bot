@@ -33,7 +33,9 @@ curl "http://localhost:4210/execution/plan?marketAddress=0x...&tokenId=1&amountU
 - Phase 3: quote + `eth_call` + 交易编码，默认 dry-run，被硬风控拦截。
 - Phase 4: 执行前 dry-run/preflight，API 和面板展示 quote、gas、tx plan 和阻断原因。
 - Phase 5: core 内部实盘广播函数和硬门禁；暂不暴露 API/面板交易入口。
-- Phase 6: J/U 级别小额实盘，逐笔日志、面板 PnL、熔断和人工确认。
+- Phase 6: VPS/API 安全加固、token 鉴权、Docker healthcheck 和部署 runbook。
+- Phase 7: JSON 交易账本、持仓汇总和面板 PnL 摘要。
+- Phase 8: J/U 级别小额实盘，逐笔日志、面板 PnL、熔断和人工确认。
 
 阶段记录：
 
@@ -42,6 +44,7 @@ curl "http://localhost:4210/execution/plan?marketAddress=0x...&tokenId=1&amountU
 - [docs/phase-3.md](docs/phase-3.md)
 - [docs/phase-4.md](docs/phase-4.md)
 - [docs/phase-5.md](docs/phase-5.md)
+- [docs/phase-7.md](docs/phase-7.md)
 - [docs/protocol-verification-latest.md](docs/protocol-verification-latest.md)
 - [docs/vps-deploy.md](docs/vps-deploy.md)
 
