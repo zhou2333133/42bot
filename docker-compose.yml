@@ -1,0 +1,37 @@
+services:
+  api:
+    build:
+      context: .
+    command: npm run start:api
+    env_file:
+      - .env
+    ports:
+      - "4210:4210"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  bot:
+    build:
+      context: .
+    command: npm run start:bot
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  dashboard:
+    build:
+      context: .
+    command: npm --workspace @42bot/dashboard run preview -- --host 0.0.0.0 --port 4220
+    env_file:
+      - .env
+    ports:
+      - "4220:4220"
+    restart: unless-stopped
+    depends_on:
+      - api
+

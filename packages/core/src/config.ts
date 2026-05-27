@@ -1,0 +1,56 @@
+import "dotenv/config";
+import { z } from "zod";
+
+const booleanString = z
+  .preprocess((value) => {
+    if (typeof value === "boolean") return value;
+    if (typeof value !== "string") return false;
+    return value.toLowerCase() === "true";
+  }, z.boolean());
+
+const numberString = (fallback: number) =>
+  z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (value === undefined || value.trim() === "") return fallback;
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) return fallback;
+      return parsed;
+    });
+
+const envSchema = z.object({
+  NODE_ENV: z.string().default("development"),
+  FORTYTWO_REST_BASE: z.string().url().default("https://rest.ft.42.space"),
+  BSC_HTTP_RPC: z.string().optional().default(""),
+  BSC_WS_RPC: z.string().optional().default(""),
+  WALLET_ADDRESS: z.string().optional().default(""),
+  PRIVATE_KEY: z.string().optional().default(""),
+  LIVE_TRADING: booleanString.default(false),
+  MAX_TRADE_USDT: numberString(5),
+  DAILY_MAX_USDT: numberString(30),
+  MAX_OPEN_POSITIONS: numberString(3),
+  MAX_SLIPPAGE_BPS: numberString(1000),
+  MAX_GAS_GWEI: numberString(5),
+  REQUIRE_REAL_MINTS: booleanString.default(true),
+  HOT_MARKET_MIN_SCORE: numberString(70),
+  MARKET_LOOKBACK_LIMIT: numberString(50),
+  POLL_INTERVAL_MS: numberString(10000),
+  STATE_FILE: z.string().default("./data/state.json"),
+  API_HOST: z.string().default("0.0.0.0"),
+  API_PORT: numberString(4210),
+  VITE_API_BASE: z.string().default("http://localhost:4210")
+});
+
+export type AppConfig = z.infer<typeof envSchema>;
+
+export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
+  return envSchema.parse(env);
+}
+
+export function redactConfig(config: AppConfig): Omit<AppConfig, "PRIVATE_KEY"> & { PRIVATE_KEY: string } {
+  return {
+    ...config,
+    PRIVATE_KEY: config.PRIVATE_KEY ? "[redacted]" : ""
+  };
+}

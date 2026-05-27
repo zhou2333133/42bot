@@ -1,0 +1,27 @@
+{
+  "name": "42bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "verify": "npm run typecheck && npm run test && npm run build",
+    "dev:api": "npm --workspace @42bot/api run dev",
+    "dev:bot": "npm --workspace @42bot/bot run dev",
+    "dev:dashboard": "npm --workspace @42bot/dashboard run dev",
+    "start:api": "npm --workspace @42bot/api run start",
+    "start:bot": "npm --workspace @42bot/bot run start"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.15",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.4",
+    "vitest": "^4.1.7"
+  }
+}
