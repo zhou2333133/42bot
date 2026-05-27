@@ -3,6 +3,7 @@ export * from "./amounts.js";
 export * from "./config.js";
 export * from "./constants.js";
 export * from "./execution-gate.js";
+export * from "./executor.js";
 export * from "./poller.js";
 export * from "./protocol-gate.js";
 export * from "./quoter.js";

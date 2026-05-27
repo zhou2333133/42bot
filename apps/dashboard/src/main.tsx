@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { Activity, AlertTriangle, BarChart3, PauseCircle, Radio, RefreshCw, ShieldCheck, Zap } from "lucide-react";
+import { Activity, AlertTriangle, BarChart3, PauseCircle, Radio, RefreshCw, ShieldCheck, TerminalSquare, Zap } from "lucide-react";
 import "./styles.css";
 
 type MarketStatus = "not_started" | "live" | "ended" | "resolved" | "finalised" | "all" | string;
@@ -102,6 +102,7 @@ interface BotSnapshot {
   updatedAt: string;
   config: {
     liveTrading: boolean;
+    killSwitch: boolean;
     maxTradeUsdt: number;
     dailyMaxUsdt: number;
     maxOpenPositions: number;
@@ -121,6 +122,46 @@ interface BotSnapshot {
   observations: MarketObservation[];
 }
 
+interface ExecutionPlan {
+  createdAt: string;
+  side: "buy" | "sell";
+  risk: {
+    allowed: boolean;
+    reasons: string[];
+  };
+  readiness: {
+    ready: boolean;
+    reasons: string[];
+  };
+  gas: {
+    status: "passed" | "failed" | "skipped";
+    maxGasGwei: number;
+    gasPriceGwei?: string;
+    withinCap: boolean;
+    reasons: string[];
+  };
+  quoteCheck: {
+    status: "passed" | "failed" | "skipped";
+    reason?: string;
+    error?: string;
+  };
+  transactions: Array<{
+    kind: "approve" | "operator" | "swap";
+    to: string;
+    description: string;
+    required: boolean;
+    preflight: {
+      call: { status: string; reason?: string; error?: string };
+      gas: { status: string; reason?: string; error?: string };
+      gasUnits?: string;
+      gasCostWei?: string;
+    };
+  }>;
+  preconditionsReady: boolean;
+  broadcastReady: false;
+  blockedReasons: string[];
+}
+
 const apiBase = import.meta.env.VITE_API_BASE ?? "http://localhost:4210";
 
 function App() {
@@ -128,6 +169,9 @@ function App() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [executionPlan, setExecutionPlan] = React.useState<ExecutionPlan | null>(null);
+  const [planError, setPlanError] = React.useState<string | null>(null);
+  const [planning, setPlanning] = React.useState(false);
 
   const loadSnapshot = React.useCallback(async () => {
     setError(null);
@@ -166,6 +210,31 @@ function App() {
   const candidates = snapshot?.scores.filter((score) => score.action === "candidate").length ?? 0;
   const skipped = snapshot?.scores.filter((score) => score.action === "skip").length ?? 0;
   const sortedScores = [...(snapshot?.scores ?? [])].sort((left, right) => right.score - left.score);
+  const topCandidate = sortedScores.find((score) => score.action === "candidate") ?? sortedScores[0];
+  const topMarket = topCandidate ? snapshot?.markets.find((market) => market.address === topCandidate.marketAddress) : undefined;
+  const topOutcome = topMarket?.outcomes[0];
+
+  async function planTopCandidate() {
+    if (!topMarket || !topOutcome) return;
+    setPlanning(true);
+    setPlanError(null);
+    try {
+      const params = new URLSearchParams({
+        marketAddress: topMarket.address,
+        tokenId: topOutcome.tokenId,
+        amountUsdt: String(Math.min(snapshot?.config.maxTradeUsdt ?? 1, 3)),
+        slippageBps: "500",
+        reason: "dashboard top candidate dry-run"
+      });
+      const response = await fetch(`${apiBase}/execution/plan?${params.toString()}`);
+      if (!response.ok) throw new Error(`API ${response.status}`);
+      setExecutionPlan((await response.json()) as ExecutionPlan);
+    } catch (currentError) {
+      setPlanError(currentError instanceof Error ? currentError.message : "unknown error");
+    } finally {
+      setPlanning(false);
+    }
+  }
 
   return (
     <main className="shell">
@@ -178,10 +247,14 @@ function App() {
           <button type="button" className="iconButton" onClick={refreshNow} disabled={refreshing} title="Refresh snapshot">
             <RefreshCw size={18} className={refreshing ? "spin" : ""} />
           </button>
+          <button type="button" className="iconButton" onClick={planTopCandidate} disabled={planning || !topMarket || !topOutcome} title="Build dry-run execution plan">
+            <TerminalSquare size={18} />
+          </button>
         </div>
       </header>
 
       {error ? <div className="notice danger">API error: {error}</div> : null}
+      {planError ? <div className="notice danger">Execution plan error: {planError}</div> : null}
       {loading ? <div className="notice">Loading 42space REST snapshot...</div> : null}
 
       <section className="metrics">
@@ -190,7 +263,7 @@ function App() {
         <Metric icon={<Zap size={18} />} label="Candidates" value={String(candidates)} tone={candidates > 0 ? "hot" : "neutral"} />
         <Metric icon={<Activity size={18} />} label="Activity Rows" value={String(snapshot?.status.activitiesFetched ?? 0)} />
         <Metric icon={<ShieldCheck size={18} />} label="Live Trading" value={snapshot?.config.liveTrading ? "ON" : "OFF"} tone={snapshot?.config.liveTrading ? "warn" : "good"} />
-        <Metric icon={<PauseCircle size={18} />} label="Phase" value="Read-only" />
+        <Metric icon={<PauseCircle size={18} />} label="Kill Switch" value={snapshot?.config.killSwitch ? "ON" : "OFF"} tone={snapshot?.config.killSwitch ? "good" : "warn"} />
       </section>
 
       <section className="grid">
@@ -220,7 +293,7 @@ function App() {
           </div>
         </Panel>
 
-        <Panel title="Risk Limits" subtitle="实盘路径未启用，当前仅观察">
+        <Panel title="Risk Limits" subtitle="实盘路径仍需要人工确认">
           <div className="riskGrid">
             <Risk label="单笔上限" value={`${snapshot?.config.maxTradeUsdt ?? 0} USDT`} />
             <Risk label="日上限" value={`${snapshot?.config.dailyMaxUsdt ?? 0} USDT`} />
@@ -230,9 +303,48 @@ function App() {
             <Risk label="更新时间" value={snapshot ? formatTime(snapshot.updatedAt) : "-"} />
           </div>
           <div className="notice compact">
-            交易按钮会在 Phase 3 接入 quote、eth_call、滑点、授权和熔断后启用；现在保持只读，防止误触真实资金。
+            当前按钮只生成 dry-run/preflight 计划，不签名、不授权、不发交易。真实广播会在单独阶段加入双确认。
           </div>
         </Panel>
+      </section>
+
+      <section className="executionBand">
+        <div className="sectionTitle">
+          <h2>Execution Dry Run</h2>
+          <span>quote + risk + gas + tx plan</span>
+        </div>
+        <div className="executionGrid">
+          <div className="panel">
+            <div className="riskGrid">
+              <Risk label="Risk" value={executionPlan?.risk.allowed ? "allowed" : "blocked"} />
+              <Risk label="Readiness" value={executionPlan?.readiness.ready ? "ready" : "blocked"} />
+              <Risk label="Quote" value={executionPlan?.quoteCheck.status ?? "-"} />
+              <Risk label="Gas" value={executionPlan?.gas.gasPriceGwei ? `${Number(executionPlan.gas.gasPriceGwei).toFixed(3)} gwei` : executionPlan?.gas.status ?? "-"} />
+              <Risk label="Preconditions" value={executionPlan?.preconditionsReady ? "ready" : "not ready"} />
+              <Risk label="Broadcast" value="disabled" />
+            </div>
+          </div>
+          <div className="panel">
+            <div className="txList">
+              {(executionPlan?.transactions ?? []).map((tx, index) => (
+                <div className="txRow" key={`${tx.kind}-${index}`}>
+                  <div>
+                    <strong>{tx.kind}</strong>
+                    <span>{tx.description}</span>
+                    <span>{shortAddress(tx.to)} · call {tx.preflight.call.status} · gas {tx.preflight.gas.status}</span>
+                  </div>
+                  <span className={`pill ${tx.required ? "candidate" : "watch"}`}>{tx.required ? "required" : "skip"}</span>
+                </div>
+              ))}
+              {!executionPlan ? <div className="notice compact">点击右上角终端图标，为当前最高分市场生成执行前计划。</div> : null}
+            </div>
+          </div>
+          <div className="panel blockers">
+            {(executionPlan?.blockedReasons ?? ["尚未生成执行计划"]).slice(0, 8).map((reason) => (
+              <div className="blocker" key={reason}>{reason}</div>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="marketBand">

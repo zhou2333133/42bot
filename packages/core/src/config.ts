@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { isAbsolute, resolve } from "node:path";
 import { z } from "zod";
 
 const booleanString = z
@@ -32,6 +33,7 @@ const envSchema = z.object({
   MAX_OPEN_POSITIONS: numberString(3),
   MAX_SLIPPAGE_BPS: numberString(1000),
   MAX_GAS_GWEI: numberString(5),
+  KILL_SWITCH: booleanString.default(true),
   INTEGRATOR_ADDRESS: z.string().optional().default(""),
   INTEGRATOR_FEE_BPS: numberString(0),
   PROTOCOL_REPORT_JSON_PATH: z.string().default("./data/protocol-verification-latest.json"),
@@ -48,12 +50,26 @@ const envSchema = z.object({
 export type AppConfig = z.infer<typeof envSchema>;
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  return envSchema.parse(env);
+  const parsed = envSchema.parse(env);
+  const basePath = env.PROJECT_ROOT || env.INIT_CWD || process.cwd();
+  return {
+    ...parsed,
+    PROTOCOL_REPORT_JSON_PATH: resolveConfigPath(parsed.PROTOCOL_REPORT_JSON_PATH, basePath),
+    STATE_FILE: resolveConfigPath(parsed.STATE_FILE, basePath)
+  };
 }
 
-export function redactConfig(config: AppConfig): Omit<AppConfig, "PRIVATE_KEY"> & { PRIVATE_KEY: string } {
+export function redactConfig(
+  config: AppConfig
+): Omit<AppConfig, "PRIVATE_KEY" | "BSC_HTTP_RPC" | "BSC_WS_RPC"> & { PRIVATE_KEY: string; BSC_HTTP_RPC: string; BSC_WS_RPC: string } {
   return {
     ...config,
+    BSC_HTTP_RPC: config.BSC_HTTP_RPC ? "[redacted]" : "",
+    BSC_WS_RPC: config.BSC_WS_RPC ? "[redacted]" : "",
     PRIVATE_KEY: config.PRIVATE_KEY ? "[redacted]" : ""
   };
+}
+
+function resolveConfigPath(value: string, basePath: string): string {
+  return isAbsolute(value) ? value : resolve(basePath, value);
 }

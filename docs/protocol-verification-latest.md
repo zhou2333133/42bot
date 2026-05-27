@@ -1,6 +1,6 @@
 # Protocol Verification Latest
 
-Generated at: 2026-05-27T02:45:50.979Z
+Generated at: 2026-05-27T03:43:48.805Z
 
 Live execution ready: **NO**
 
@@ -34,10 +34,11 @@ Live execution ready: **NO**
 - PASS `source.lens`: lens source token check 4/4
 - PASS `source.controller`: controller source token check 4/4
 - PASS `activity.transactions`: Found 12 recent REST activity transactions with hashes
-- PASS `rpc.receipts`: Receipt checks matched 10/12 known router/controller destinations
+- PASS `rpc.receipts`: Receipt checks matched 9/12 known router/controller destinations
 
 ## Recent Transactions
 
+- `0x4d6a0f3998d438e56abca5782d8be2b9718340603b85695217663effa345a46e` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x0000000071727de22e5e9d8baf0edac6f37da032` matchedKnownContract=false
 - `0x7945827b522d3020f1e7b05000375026cf69459fd2eda0f749bf2f01022cd525` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x0000000071727de22e5e9d8baf0edac6f37da032` matchedKnownContract=false
 - `0x0178b8737db76bfe0b98a4b494350c8623def6597d0366bcddcc3a7387013bb6` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
 - `0x29de9ed16de781f7ab4c30e5a35e72cbdeb689a8a8010945de0962c7614376b3` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
@@ -49,7 +50,6 @@ Live execution ready: **NO**
 - `0xd22e15761c0807e395aa9dc899ee07ec4efbecbcc6fff540aec51c3c3360b905` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
 - `0xcf933a1a147a3f668bfe0535a3921500fd96d166a58c9d253ec9c4546b927231` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x0000000071727de22e5e9d8baf0edac6f37da032` matchedKnownContract=false
 - `0xc1975348c6ba8c01abb52f0ca7c1fd144315880f8f0ec3cec85dda000861c9b3` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
-- `0x696cf88d92b7b9e30a397a5ad541853fa633e2fdb4bd52b02c91b1246426a508` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
 
 ## Next Required Actions
 

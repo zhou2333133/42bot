@@ -2,7 +2,7 @@
 
 42space Event Token 小额实盘狙击机器人。
 
-当前阶段目标是建立安全、可维护、可观察的工程骨架：官方 REST 新盘发现、策略评分、风控判断、API 和面板。真实交易执行必须先完成最新市场交易 trace、BscScan 源码/ABI 双重确认，并显式开启 `LIVE_TRADING=true`。
+当前阶段目标是建立安全、可维护、可观察的工程骨架：官方 REST 新盘发现、策略评分、风控判断、quote、执行前 dry-run/preflight、API 和面板。真实交易执行必须先完成最新市场交易 trace、BscScan 源码/ABI 双重确认，并显式开启 `LIVE_TRADING=true`。
 
 ## 本地启动
 
@@ -17,19 +17,29 @@ npm run dev:dashboard
 
 API 默认监听 `http://localhost:4210`，面板默认监听 `http://localhost:4220`。Phase 1 只使用官方 REST API，不签名、不授权、不发交易。
 
+执行计划接口：
+
+```bash
+curl "http://localhost:4210/execution/plan?marketAddress=0x...&tokenId=1&amountUsdt=3&slippageBps=500"
+```
+
+该接口只返回风险、协议、quote、gas、交易 calldata 和阻断原因；当前阶段不会签名或广播。
+
 ## 阶段说明
 
 - Phase 0: 项目约束、协议事实边界和 Git 仓库初始化。
 - Phase 1: 只读市场监控、策略评分、状态文件、API、dashboard 和 Docker Compose。
 - Phase 2: 最新市场交易 trace、BscScan 验证源码/ABI、官方合约仓库交叉验证。
 - Phase 3: quote + `eth_call` + 交易编码，默认 dry-run，被硬风控拦截。
-- Phase 4: J/U 级别小额实盘，逐笔日志、面板 PnL、熔断和人工确认。
+- Phase 4: 执行前 dry-run/preflight，API 和面板展示 quote、gas、tx plan 和阻断原因。
+- Phase 5: J/U 级别小额实盘，逐笔日志、面板 PnL、熔断和人工确认。
 
 阶段记录：
 
 - [docs/phase-1.md](docs/phase-1.md)
 - [docs/phase-2.md](docs/phase-2.md)
 - [docs/phase-3.md](docs/phase-3.md)
+- [docs/phase-4.md](docs/phase-4.md)
 - [docs/protocol-verification-latest.md](docs/protocol-verification-latest.md)
 
 ## 阶段门禁

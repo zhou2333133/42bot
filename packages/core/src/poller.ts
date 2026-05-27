@@ -65,6 +65,7 @@ export async function buildSnapshot(config: AppConfig, client = new FortyTwoClie
     updatedAt: new Date().toISOString(),
     config: {
       liveTrading: config.LIVE_TRADING,
+      killSwitch: config.KILL_SWITCH,
       maxTradeUsdt: config.MAX_TRADE_USDT,
       dailyMaxUsdt: config.DAILY_MAX_USDT,
       maxOpenPositions: config.MAX_OPEN_POSITIONS,

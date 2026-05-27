@@ -233,10 +233,59 @@ export interface ExecutionReadiness {
   reasons: string[];
 }
 
+export type ExecutionCheckStatus = "passed" | "failed" | "skipped";
+
+export interface ExecutionCheck {
+  status: ExecutionCheckStatus;
+  reason?: string;
+  error?: string;
+}
+
+export type TransactionKind = "approve" | "operator" | "swap";
+
+export interface PreparedExecutionTransaction extends PreparedTransaction {
+  kind: TransactionKind;
+  required: boolean;
+  preflight: {
+    call: ExecutionCheck;
+    gas: ExecutionCheck;
+    gasUnits?: string;
+    gasCostWei?: string;
+  };
+}
+
+export interface GasReadiness {
+  status: ExecutionCheckStatus;
+  maxGasGwei: number;
+  gasPriceWei?: string;
+  gasPriceGwei?: string;
+  withinCap: boolean;
+  reasons: string[];
+}
+
+export interface ExecutionPlan {
+  createdAt: string;
+  side: TradeSide;
+  intent: TradeIntent;
+  protocolGate: ProtocolGate;
+  risk: RiskDecision;
+  readiness: ExecutionReadiness;
+  gas: GasReadiness;
+  quote?: QuoteResult;
+  quoteCheck: ExecutionCheck;
+  balanceChecks: ExecutionCheck[];
+  transactions: PreparedExecutionTransaction[];
+  preconditionsReady: boolean;
+  broadcastImplemented: false;
+  broadcastReady: false;
+  blockedReasons: string[];
+}
+
 export interface BotSnapshot {
   updatedAt: string;
   config: {
     liveTrading: boolean;
+    killSwitch: boolean;
     maxTradeUsdt: number;
     dailyMaxUsdt: number;
     maxOpenPositions: number;

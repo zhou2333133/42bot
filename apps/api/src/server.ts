@@ -2,11 +2,12 @@ import cors from "cors";
 import express from "express";
 import {
   JsonStateStore,
+  buildExecutionPlan,
   buildSnapshot,
   loadConfig,
   redactConfig
 } from "@42bot/core";
-import type { BotSnapshot, MarketScore } from "@42bot/core";
+import type { BotSnapshot, ExecutionPlan, MarketScore, TradeIntent, TradeSide } from "@42bot/core";
 
 const config = loadConfig();
 const store = new JsonStateStore(config.STATE_FILE);
@@ -59,6 +60,22 @@ app.get("/scores", async (_request, response, next) => {
     const snapshot = await loadSnapshot();
     const scores = [...snapshot.scores].sort(compareScores);
     response.json(scores);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/execution/plan", async (request, response, next) => {
+  try {
+    const intent = parseTradeIntent(request.query);
+    const side = parseSide(request.query.side);
+    const plan = await buildExecutionPlan({
+      config,
+      intent,
+      side,
+      skipChainPreflight: request.query.preflight === "false"
+    });
+    response.json(toJson(plan));
   } catch (error) {
     next(error);
   }
@@ -124,4 +141,42 @@ async function refreshSnapshot(): Promise<BotSnapshot> {
 function compareScores(left: MarketScore, right: MarketScore): number {
   if (right.score !== left.score) return right.score - left.score;
   return left.marketAddress.localeCompare(right.marketAddress);
+}
+
+function parseTradeIntent(query: express.Request["query"]): TradeIntent {
+  const marketAddress = query.marketAddress;
+  const tokenId = query.tokenId;
+  const amountUsdt = Number(query.amountUsdt ?? config.MAX_TRADE_USDT);
+  const slippageBps = Number(query.slippageBps ?? Math.min(config.MAX_SLIPPAGE_BPS, 500));
+
+  if (typeof marketAddress !== "string" || marketAddress.trim() === "") {
+    throw new Error("marketAddress query parameter is required");
+  }
+  if (typeof tokenId !== "string" || tokenId.trim() === "") {
+    throw new Error("tokenId query parameter is required");
+  }
+  if (!Number.isFinite(amountUsdt) || amountUsdt <= 0) {
+    throw new Error("amountUsdt must be a positive number");
+  }
+  if (!Number.isInteger(slippageBps) || slippageBps < 0) {
+    throw new Error("slippageBps must be a non-negative integer");
+  }
+
+  return {
+    marketAddress,
+    tokenId,
+    amountUsdt,
+    slippageBps,
+    reason: typeof query.reason === "string" && query.reason.trim() ? query.reason : "manual dry-run plan"
+  };
+}
+
+function parseSide(value: unknown): TradeSide {
+  return value === "sell" ? "sell" : "buy";
+}
+
+function toJson(plan: ExecutionPlan): unknown {
+  return JSON.parse(
+    JSON.stringify(plan, (_key, value) => (typeof value === "bigint" ? value.toString() : value))
+  );
 }

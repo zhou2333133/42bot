@@ -313,6 +313,54 @@ h2 {
   margin-top: 18px;
 }
 
+.executionBand {
+  margin-top: 18px;
+}
+
+.executionGrid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.7fr) minmax(360px, 1fr) minmax(280px, 0.8fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.txList,
+.blockers {
+  display: grid;
+  gap: 10px;
+}
+
+.txRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px;
+  border: 1px solid #e1e7e3;
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+
+.txRow div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.txRow span {
+  color: #63756c;
+  font-size: 12px;
+}
+
+.blocker {
+  padding: 10px 11px;
+  border: 1px solid #efd0c7;
+  border-radius: 8px;
+  color: #7c2d1d;
+  background: #fff6f3;
+  font-size: 13px;
+}
+
 .marketGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -369,7 +417,8 @@ footer {
 
 @media (max-width: 1100px) {
   .metrics,
-  .marketGrid {
+  .marketGrid,
+  .executionGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -391,6 +440,7 @@ footer {
 
   .metrics,
   .marketGrid,
+  .executionGrid,
   .riskGrid {
     grid-template-columns: 1fr;
   }
