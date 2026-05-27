@@ -146,8 +146,8 @@ function checkDocsAddresses(addresses: Record<string, string[]>): Check[] {
     return {
       id: `docs.address.${address}`,
       severity: all.has(address.toLowerCase()) ? "pass" : blocksLiveExecution ? "fail" : "warn",
-      summary: `docs deployment contains ${address}`,
-      details: blocksLiveExecution ? "critical execution path address" : "noncritical reference/deprecated/curve address",
+      summary: `官方文档包含部署地址 ${address}`,
+      details: blocksLiveExecution ? "实盘执行关键路径地址" : "非关键引用/废弃/曲线地址",
       blocksLiveExecution
     };
   });
@@ -158,7 +158,7 @@ function checkGithubDeployment(deployment: GithubDeployment): Check[] {
   checks.push({
     id: "github.chain",
     severity: deployment.network?.chainId === 56 ? "pass" : "fail",
-    summary: `github deployment chainId=${deployment.network?.chainId ?? "missing"}`,
+    summary: `GitHub 部署文件 chainId=${deployment.network?.chainId ?? "缺失"}`,
     blocksLiveExecution: true
   });
 
@@ -172,7 +172,7 @@ function checkGithubDeployment(deployment: GithubDeployment): Check[] {
     checks.push({
       id: `github.address.${name}`,
       severity: address && isAddress(address) ? "pass" : "fail",
-      summary: `${name}=${address ?? "missing"}`,
+      summary: `${name}=${address ?? "缺失"}`,
       blocksLiveExecution: true
     });
   }
@@ -196,8 +196,8 @@ function compareDocsAndGithub(addresses: Record<string, string[]>, deployment: G
     checks.push({
       id: `compare.docsGithub.${name}`,
       severity: address && docsSet.has(address.toLowerCase()) ? "pass" : "warn",
-      summary: `${name} docs/github address alignment`,
-      details: address ? `${address}` : "missing in github deployment",
+      summary: `${name} 官方文档/GitHub 地址一致性`,
+      details: address ? `${address}` : "GitHub 部署文件缺失该地址",
       blocksLiveExecution
     });
   }
@@ -207,8 +207,8 @@ function compareDocsAndGithub(addresses: Record<string, string[]>, deployment: G
   checks.push({
     id: "compare.docsGithub.PowerCurve",
     severity: githubPowerCurve && docsSet.has(githubPowerCurve.toLowerCase()) ? "pass" : "warn",
-    summary: "PowerCurve docs/github address alignment",
-    details: `github PowerCurve=${githubPowerCurve ?? "missing"}, github legacy=${githubLegacyPowerCurve ?? "missing"}. Noncritical for current Router/Lens buy preflight; keep monitoring before relying on curve-specific logic.`,
+    summary: "PowerCurve 官方文档/GitHub 地址一致性",
+    details: `GitHub PowerCurve=${githubPowerCurve ?? "缺失"}, GitHub 旧版=${githubLegacyPowerCurve ?? "缺失"}。当前 Router/Lens 买入预演不直接依赖该地址，因此不是实盘关键阻断项；在构建曲线专用逻辑前必须继续跟踪。`,
     blocksLiveExecution: false
   });
 
@@ -236,7 +236,7 @@ async function checkRecentTransactions(restBase: string, rpcUrl: string, checks:
     checks.push({
       id: "activity.transactions",
       severity: "warn",
-      summary: "No recent REST activity transactions with hashes found",
+      summary: "未找到带交易 hash 的近期 REST activity",
       blocksLiveExecution: true
     });
     return [];
@@ -245,7 +245,7 @@ async function checkRecentTransactions(restBase: string, rpcUrl: string, checks:
   checks.push({
     id: "activity.transactions",
     severity: "pass",
-    summary: `Found ${withHash.length} recent REST activity transactions with hashes`,
+    summary: `找到 ${withHash.length} 条带交易 hash 的近期 REST activity`,
     blocksLiveExecution: true
   });
 
@@ -253,8 +253,8 @@ async function checkRecentTransactions(restBase: string, rpcUrl: string, checks:
     checks.push({
       id: "rpc.receipts",
       severity: "warn",
-      summary: "BSC_HTTP_RPC missing; transaction receipt checks skipped",
-      details: "Set BSC_HTTP_RPC in .env to verify recent activity transaction destinations and status.",
+      summary: "缺少 BSC_HTTP_RPC，已跳过交易 receipt 检查",
+      details: "请在 .env 中设置 BSC_HTTP_RPC，以核验近期 activity 交易的目标地址和状态。",
       blocksLiveExecution: true
     });
     return withHash.map((item) => ({
@@ -262,7 +262,7 @@ async function checkRecentTransactions(restBase: string, rpcUrl: string, checks:
       market: item.marketAddress,
       type: item.type,
       matchedKnownContract: false,
-      note: "receipt skipped because BSC_HTTP_RPC is unset"
+      note: "未设置 BSC_HTTP_RPC，已跳过 receipt 检查"
     }));
   }
 
@@ -303,7 +303,7 @@ async function checkRecentTransactions(restBase: string, rpcUrl: string, checks:
         market: item.marketAddress,
         type: item.type,
         matchedKnownContract: false,
-        note: error instanceof Error ? error.message : "unknown receipt error"
+        note: error instanceof Error ? error.message : "未知 receipt 错误"
       });
     }
   }
@@ -313,11 +313,11 @@ async function checkRecentTransactions(restBase: string, rpcUrl: string, checks:
   checks.push({
     id: "rpc.receipts",
     severity: matched > 0 ? "pass" : "warn",
-    summary: `Receipt checks matched ${matched}/${transactions.length} known router/controller/market paths`,
+    summary: `交易回执检查命中 ${matched}/${transactions.length} 条已知 router/controller/market 路径`,
     details:
       matched === 0
-        ? "Transactions may call market contracts directly or receipts need deeper trace/BscScan inspection."
-        : `${matchedViaLogs}/${transactions.length} matched via receipt log addresses, which covers Binance Wallet/account-router style transactions.`,
+        ? "交易可能直接调用 market 合约，或需要更深入的 trace/BscScan 检查。"
+        : `${matchedViaLogs}/${transactions.length} 条通过交易回执日志地址命中，可覆盖 Binance Wallet/account-router 风格交易。`,
     blocksLiveExecution: true
   });
 
@@ -340,8 +340,8 @@ function checkSource(sourceKey: keyof typeof SOURCE_URLS, sourceText: string, ch
   checks.push({
     id: `source.${sourceKey}`,
     severity: missing.length === 0 ? "pass" : "fail",
-    summary: `${sourceKey} source token check ${found.length}/${requiredTokens.length}`,
-    details: missing.length > 0 ? `Missing: ${missing.join(", ")}` : undefined,
+    summary: `${sourceKey} 源码关键标记检查 ${found.length}/${requiredTokens.length}`,
+    details: missing.length > 0 ? `缺失：${missing.join(", ")}` : undefined,
     blocksLiveExecution: true
   });
   return {
@@ -368,57 +368,57 @@ function extractBscscanAddresses(markdown: string): Record<string, string[]> {
 function buildNextActions(checks: Check[], transactions: ProtocolReport["recentTransactions"]): string[] {
   const actions = new Set<string>();
   if (checks.some((check) => check.id === "rpc.receipts" && check.severity !== "pass")) {
-    actions.add("Set BSC_HTTP_RPC and rerun npm run verify:protocol to verify recent transaction receipts.");
+    actions.add("设置 BSC_HTTP_RPC，并重新运行 npm run verify:protocol，以核验近期交易回执。");
   }
   if (transactions.every((transaction) => !transaction.matchedKnownContract)) {
-    actions.add("Inspect one latest market transaction trace on BscScan and record the actual call path before enabling execution.");
+    actions.add("启用执行前，至少检查一笔最新市场交易的 BscScan trace，并记录实际调用路径。");
   }
   if (checks.some((check) => check.id === "compare.docsGithub.PowerCurve" && check.severity !== "pass")) {
-    actions.add("Resolve PowerCurve docs/github address mismatch; treat docs table legacy curve and github PowerCurve separately.");
+    actions.add("解决 PowerCurve 官方文档/GitHub 地址不一致问题；分别看待官方文档表里的旧版曲线和 GitHub 的 PowerCurve。");
   }
   if (checks.some((check) => check.severity === "fail")) {
-    actions.add("Do not implement live execution until all fail checks are resolved.");
+    actions.add("所有失败检查解决前，不要实现或启用实盘执行。");
   }
-  actions.add("Generate ABI from official sources or verified BscScan source in Phase 3; do not handwrite ABI.");
+  actions.add("ABI 必须从官方源码或 BscScan 已验证源码生成，不能手写猜测。");
   return [...actions];
 }
 
 function renderMarkdown(report: ProtocolReport): string {
   const checksBySeverity = summarizeChecks(report.checks);
   const blocking = summarizeBlockingChecks(report.checks);
-  return `# Protocol Verification Latest
+  return `# 最新协议核验报告
 
-Generated at: ${report.generatedAt}
+生成时间：${report.generatedAt}
 
-Live execution ready: **${report.liveReady ? "YES" : "NO"}**
+实盘执行就绪：**${report.liveReady ? "是" : "否"}**
 
-## Check Summary
+## 检查摘要
 
-- pass: ${checksBySeverity.pass}
-- warn: ${checksBySeverity.warn}
-- fail: ${checksBySeverity.fail}
-- blocking unresolved: ${blocking.unresolved}
-- nonblocking warnings: ${blocking.nonblockingWarnings}
+- 通过：${checksBySeverity.pass}
+- 警告：${checksBySeverity.warn}
+- 失败：${checksBySeverity.fail}
+- 实盘阻断未解决项：${blocking.unresolved}
+- 非阻断警告：${blocking.nonblockingWarnings}
 
-## Checks
+## 检查项
 
-${report.checks.map((check) => `- ${icon(check.severity)} ${check.blocksLiveExecution ? "[BLOCKS-LIVE]" : "[NONBLOCKING]"} \`${check.id}\`: ${check.summary}${check.details ? ` (${check.details})` : ""}`).join("\n")}
+${report.checks.map((check) => `- ${icon(check.severity)} ${check.blocksLiveExecution ? "[阻断实盘]" : "[非阻断]"} \`${check.id}\`: ${check.summary}${check.details ? ` (${check.details})` : ""}`).join("\n")}
 
-## Recent Transactions
+## 近期交易
 
-${report.recentTransactions.length > 0 ? report.recentTransactions.map((tx) => `- \`${tx.hash}\` ${tx.type} market \`${tx.market}\`${tx.to ? ` to \`${tx.to}\`` : ""} matchedKnownContract=${tx.matchedKnownContract}${tx.matchedLogAddress ? " matchedLogAddress=true" : ""}${tx.note ? `; ${tx.note}` : ""}`).join("\n") : "- None"}
+${report.recentTransactions.length > 0 ? report.recentTransactions.map((tx) => `- \`${tx.hash}\` ${tx.type}，市场 \`${tx.market}\`${tx.to ? `，目标 \`${tx.to}\`` : ""}，命中已知合约=${tx.matchedKnownContract ? "是" : "否"}${tx.matchedLogAddress ? "，通过 log 地址命中=是" : ""}${tx.note ? `；${tx.note}` : ""}`).join("\n") : "- 无"}
 
-## Next Required Actions
+## 后续必要动作
 
 ${report.nextRequiredActions.map((action) => `- ${action}`).join("\n")}
 
-## Sources
+## 来源
 
-- Official deployments: ${report.docs.deploymentsUrl}
-- Official GitHub deployment: ${report.github.deploymentUrl}
-- Router source: ${report.source.router.url}
-- Lens source: ${report.source.lens.url}
-- Controller source: ${report.source.controller.url}
+- 官方部署文档：${report.docs.deploymentsUrl}
+- 官方 GitHub 部署文件：${report.github.deploymentUrl}
+- Router 源码：${report.source.router.url}
+- Lens 源码：${report.source.lens.url}
+- Controller 源码：${report.source.controller.url}
 `;
 }
 
@@ -438,9 +438,9 @@ function summarizeBlockingChecks(checks: Check[]): { unresolved: number; nonbloc
 }
 
 function icon(severity: Severity): string {
-  if (severity === "pass") return "PASS";
-  if (severity === "warn") return "WARN";
-  return "FAIL";
+  if (severity === "pass") return "通过";
+  if (severity === "warn") return "警告";
+  return "失败";
 }
 
 async function fetchText(url: string): Promise<string> {

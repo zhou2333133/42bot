@@ -1,32 +1,32 @@
-# Phase 4: Execution Dry-Run Preflight
+# 阶段 4：执行前干运行/预演
 
-Phase 4 adds an observable execution-planning gate. It still does not sign or broadcast transactions.
+阶段 4 增加可观察的执行计划门禁。该阶段仍不签名、不广播交易。
 
-What was added:
+## 已新增
 
-- `buildExecutionPlan` in core:
-  - evaluates risk limits and kill switch
-  - loads protocol verification gate
-  - checks current gas price against `MAX_GAS_GWEI`
-  - requests Lens quote when RPC is configured
-  - checks BUSDT/outcome balances
-  - builds exact BUSDT approve + router buy swap transactions
-  - builds sell-path operator + router sell swap transactions for the later position module
-  - can run `eth_call` and gas estimation for every required transaction
-  - Phase 4 returned a non-broadcast execution plan; Phase 5 adds a gated core broadcaster without exposing it through API/dashboard
-- API endpoint:
+- core 中的 `buildExecutionPlan`：
+  - 评估风控限额和熔断开关
+  - 加载协议核验门禁
+  - 检查当前 gas price 是否超过 `MAX_GAS_GWEI`
+  - RPC 已配置时请求 Lens quote
+  - 检查 BUSDT / outcome 余额
+  - 构造精确 BUSDT approve + Router buy swap 交易
+  - 为后续持仓模块构造 sell-path operator + Router sell swap 交易
+  - 对每笔必要交易执行 `eth_call` 和 gas 估算
+  - 阶段 4 返回非广播执行计划；阶段 5 增加受门禁保护的 core 广播器，但不暴露到 API/面板
+- API 接口：
   - `GET /execution/plan?marketAddress=...&tokenId=...&amountUsdt=...&slippageBps=...`
-- Dashboard section:
-  - risk/readiness/quote/gas/precondition/broadcast status
-  - required transaction plan
-  - blocked reasons
-- Config hardening:
-  - `KILL_SWITCH=true` default
-  - root-relative state/report paths across npm workspace processes
+- 面板区域：
+  - 风控/就绪/quote/gas/前置条件/广播状态
+  - 必要交易计划
+  - 阻断原因
+- 配置加固：
+  - `KILL_SWITCH=true` 默认开启
+  - npm workspace 进程中的状态文件和报告路径按项目根目录解析
 
-## Verification
+## 验证
 
-Commands run:
+已运行命令：
 
 ```bash
 npm run verify
@@ -34,32 +34,32 @@ npm run verify:protocol
 npm audit --audit-level=moderate
 ```
 
-Result:
+结果：
 
-- Typecheck passed.
-- 7 test files passed.
-- 18 tests passed.
-- Build passed for core, API, bot, dashboard, and protocol verifier.
-- Dependency audit found 0 moderate-or-higher vulnerabilities.
-- Protocol verification: 22 pass, 1 warn, 0 fail, `liveReady=false`.
+- 类型检查通过。
+- 7 个测试文件通过。
+- 18 个测试通过。
+- core、API、bot、面板、协议核验器构建通过。
+- 依赖审计未发现 moderate 或更高等级漏洞。
+- 协议核验：22 项通过，1 项警告，0 项失败，`liveReady=false`。
 
-Manual smoke:
+手动冒烟检查：
 
-- API `/health` returned 200.
-- API `/execution/plan` returned a blocked dry-run plan with protocol/risk/RPC reasons.
-- Dashboard loaded at `http://localhost:4220`.
-- Browser smoke confirmed:
-  - Strategy Scores visible.
-  - Observed Markets visible.
-  - Execution Dry Run visible.
-  - Dry-run button enabled.
-  - Clicking it returned blocked status without an execution-plan error.
+- API `/health` 返回 200。
+- API `/execution/plan` 返回被协议/风控/RPC 原因阻断的 dry-run 计划。
+- 面板在 `http://localhost:4220` 正常加载。
+- 浏览器冒烟检查确认：
+  - 策略评分区域可见。
+  - 观察市场区域可见。
+  - 执行干运行区域可见。
+  - dry-run 按钮可用。
+  - 点击后返回阻断状态，没有 execution-plan 错误。
 
-## Still Blocked Before Real Money
+## 实盘前仍阻断
 
-- `LIVE_TRADING=false` by default.
-- `KILL_SWITCH=true` by default.
-- `PRIVATE_KEY`, `WALLET_ADDRESS`, and private RPC are not configured.
-- Protocol report remains `liveReady=false` because the PowerCurve docs/GitHub mismatch is unresolved.
-- Signing and broadcasting are intentionally not implemented in Phase 4.
-- The sell path needs real position indexing before it should be exposed as a user action.
+- 默认 `LIVE_TRADING=false`。
+- 默认 `KILL_SWITCH=true`。
+- 未配置 `PRIVATE_KEY`、`WALLET_ADDRESS` 和私有 RPC。
+- 当时协议报告仍为 `liveReady=false`，原因是 PowerCurve 文档/GitHub 不一致。
+- 阶段 4 故意不实现签名和广播。
+- 卖出路径需要真实持仓索引后才能作为用户动作暴露。

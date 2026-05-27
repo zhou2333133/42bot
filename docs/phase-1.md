@@ -1,31 +1,31 @@
-# Phase 1: Read-Only Market Monitor
+# 阶段 1：只读市场监控
 
-Phase 1 builds a safe observable baseline before any signing or live execution code exists.
+阶段 1 的目标是在任何签名或实盘执行代码出现之前，先建立安全、可观察的基础能力。
 
-## Verified Official Inputs
+## 已核验的官方输入
 
-- Official deployments doc: `https://docs.42.space/for-developers/deployments.md`
-- Official REST base: `https://rest.ft.42.space/`
-- `GET /api/v1/markets` returns paginated market metadata.
-- `GET /api/v1/market-data/activity` returns MINT/REDEEM/FINALISE/CLAIM activity.
-- `GET /api/v1/market-data/prices` returns current outcome token prices.
-- BNB Chain `chainId=56`.
-- BUSDT collateral: `0x55d398326f99059ff775485246999027b3197955`.
+- 官方部署文档：`https://docs.42.space/for-developers/deployments.md`
+- 官方 REST 地址：`https://rest.ft.42.space/`
+- `GET /api/v1/markets` 返回分页市场元数据。
+- `GET /api/v1/market-data/activity` 返回 MINT/REDEEM/FINALISE/CLAIM 活动。
+- `GET /api/v1/market-data/prices` 返回当前结果 Token 价格。
+- BNB Chain `chainId=56`。
+- BUSDT 抵押资产：`0x55d398326f99059ff775485246999027b3197955`。
 
-## Implemented
+## 已实现
 
-- `@42bot/core`: config, official REST client, strategy scoring, risk guard primitives, JSON state store.
-- `@42bot/bot`: periodic REST poller that writes `STATE_FILE`.
-- `@42bot/api`: read-only health, snapshot, markets, scores, and refresh endpoints.
-- `@42bot/dashboard`: local/VPS dashboard for bot health, risk limits, strategy scores, observed markets, activity, and prices.
+- `@42bot/core`：配置、官方 REST 客户端、策略评分、基础风控、JSON 状态存储。
+- `@42bot/bot`：周期性 REST 轮询，并写入 `STATE_FILE`。
+- `@42bot/api`：只读健康检查、快照、市场、评分、刷新接口。
+- `@42bot/dashboard`：本地/VPS 面板，用于查看机器人状态、风控限制、策略评分、观察市场、活动和价格。
 
-## Explicitly Not Implemented Yet
+## 暂未实现
 
-- Wallet signing.
-- ERC20 approve.
-- Router swap calls.
-- FTLens quote calls.
-- Transaction receipt parsing.
-- Pause/resume/kill-switch persistence.
+- 钱包签名。
+- ERC20 授权。
+- Router swap 调用。
+- FTLens quote 调用。
+- 交易 receipt 解析。
+- 暂停/恢复/熔断状态持久化。
 
-These stay blocked until Phase 2 verifies current contract addresses, ABI, and latest market transaction traces.
+这些能力必须等阶段 2 完成当前合约地址、ABI 和最新市场交易 trace 核验后再继续。

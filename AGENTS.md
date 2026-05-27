@@ -1,4 +1,4 @@
-# 42bot Project Instructions
+# 42bot 项目说明
 
 ## 项目目标
 
@@ -25,12 +25,12 @@
 - Router: `FTRouterProxy` `0x888888886619275d33c00D3BC62DF94D700DCD42`
 - Controller V2: `0x8Fe93361D2B8b9519C4d20d47a319288Feec9072`
 - Lens V2: `0x4AAd5A856941FB64df10362024e3Ece24023d4d1`
-- Official contracts repo candidate: `fortytwo-protocol/ft-contracts-public`
+- 官方合约仓库候选：`fortytwo-protocol/ft-contracts-public`
 
 强制合约地址确认流程：
 
 - 去 `https://www.42.space/` 或 Binance Event Rush 找到一个最新市场，记录其创建交易 hash。
-- 在 BscScan 输入交易 hash，逐层 trace `Interacted With` 的合约。
+- 在 BscScan 输入交易 hash，逐层 trace 交互对象（`Interacted With`）合约。
 - 验证实际调用合约是否匹配文档地址、函数名、事件名和 ABI。
 - 所有 ABI 必须从 BscScan 已验证源码、官方合约源码生成，或通过实时链上调用验证，不能手写猜测。
 - 每周复查 `docs.42.space` 是否有新合约、升级公告或接口变更。
@@ -55,14 +55,14 @@
 - 单笔交易上限启用，例如 `MAX_TRADE_USDT`
 - 每日交易上限启用，例如 `DAILY_MAX_USDT`
 - 熔断开关启用
-- 私钥来自环境变量或服务器 secret store
+- 私钥来自环境变量或服务器密钥存储
 - 交易前必须执行链上 quote 和 `eth_call` 预演
 - 交易必须设置滑点保护 `minOutOrMaxIn`
 - 不允许无上限授权
 - 不允许 all-in
 - 不允许默认持仓到结算
 
-开发、测试、CI 可以使用 dry-run 或 fork 验证交易编码，但产品主路径必须围绕小额 live trading 构建。
+开发、测试、CI 可以使用 dry-run 或 fork 验证交易编码，但产品主路径必须围绕小额实盘交易构建。
 
 ## 策略边界
 
@@ -79,7 +79,7 @@
 
 - `not_started`
 - `isFlagged=true`
-- unknown oracle 且无白名单
+- 未知 oracle 且无白名单
 - 只有 seed、没有真实交易
 - traders 过低且无新增买单
 - 临近 resolution 的高税/高结果风险盘
@@ -165,7 +165,7 @@
 
 第一阶段完成标准：
 
-- 能启动 watcher/API/dashboard
+- 能启动 watcher/API/面板
 - 能发现新市场
 - 能展示市场和 activity
 - 能评分并给出买/跳过原因

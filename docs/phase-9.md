@@ -1,51 +1,51 @@
-# Phase 9: Manual Live-Buy CLI
+# 阶段 9：手动实盘买入 CLI
 
-Phase 9 adds the manual terminal entry point for the first J/U small live test.
+阶段 9 增加第一次 J/U 小额实盘测试使用的手动终端入口。
 
-What was added:
+## 已新增
 
-- Root script:
+- 根目录脚本：
   - `npm run live:buy -- --market 0xMarket --tokenId 1 --amountUsdt 3 --slippageBps 500`
-- Bot workspace script:
+- bot workspace 脚本：
   - `npm --workspace @42bot/bot run live:buy -- ...`
-- CLI behavior:
-  - without `--execute`, it only builds a plan and writes a journal entry
-  - with `--execute`, it calls the gated broadcaster
-  - successful, blocked, and failed executions are all written to the journal
-  - default execution waits for receipts
-  - `--no-wait` submits and returns after hashes are available
+- CLI 行为：
+  - 不带 `--execute` 时，只生成计划并写入交易账本（journal）
+  - 带 `--execute` 时，调用受门禁保护的 broadcaster
+  - 成功、阻断、失败都会写入交易账本（journal）
+  - 默认等待 receipt
+  - `--no-wait` 会在拿到交易 hash 后返回
 
-## Safety Properties
+## 安全属性
 
-The CLI reuses all existing gates:
+CLI 复用所有现有门禁：
 
 - `LIVE_TRADING=true`
 - `KILL_SWITCH=false`
-- private RPC configured
-- wallet configured
-- private key matches wallet
-- exact confirmation phrase configured
-- protocol gate `liveReady=true`
-- risk limits pass
-- quote passes
-- balance checks pass
-- every required transaction passes `eth_call`
-- every required transaction passes gas estimation
+- 已配置私有 RPC
+- 已配置钱包
+- 私钥与钱包地址匹配
+- 已配置精确确认短语
+- 协议门禁 `liveReady=true`
+- 风控限额通过
+- quote 通过
+- 余额检查通过
+- 每笔必要交易通过 `eth_call`
+- 每笔必要交易通过 gas 估算
 
-It is intentionally not exposed through the API or dashboard.
+它不会暴露到 API 或面板。
 
-## Verification
+## 验证
 
-Smoke command run locally without live config:
+在本地未配置实盘参数时运行冒烟检查命令：
 
 ```bash
 npm run live:buy -- --market 0x0000000000000000000000000000000000000002 --tokenId 1 --amountUsdt 1 --slippageBps 500
 ```
 
-Expected result:
+预期结果：
 
-- plan built
-- no transactions
-- blocked by missing live config/RPC/wallet/confirmation
-- blocked entry written to journal
-- exit code 2
+- 生成执行计划
+- 不生成交易
+- 因缺少实盘配置/RPC/钱包/确认短语被阻断
+- blocked 记录写入交易账本（journal）
+- 退出码为 2

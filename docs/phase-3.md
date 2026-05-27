@@ -1,45 +1,45 @@
-# Phase 3: Quote And Transaction Builder
+# 阶段 3：Quote 与交易构造器
 
-Phase 3 adds the non-broadcast execution foundation:
+阶段 3 增加非广播执行基础：
 
-- Minimal ABI fragments transcribed from official 42 source signatures.
-- Lens-based mint/redeem quote helpers using `eth_call` simulation.
-- Router `swapMarketV2` calldata builders.
-- Exact-amount BUSDT approve transaction builder.
-- ERC6909 `setOperator` builder for future sell path.
-- Execution readiness gate that blocks signing unless:
+- 从官方 42 源码签名转写最小 ABI 片段。
+- 基于 Lens 的 mint/redeem quote helper，使用 `eth_call` 模拟。
+- Router `swapMarketV2` calldata 构造器。
+- 精确金额 BUSDT approve 交易构造器。
+- 为后续卖出路径准备 ERC6909 `setOperator` 构造器。
+- 执行就绪门禁，除非以下条件全部满足，否则阻止签名：
   - `LIVE_TRADING=true`
-  - `BSC_HTTP_RPC` is configured
-  - `WALLET_ADDRESS` is valid
-  - `PRIVATE_KEY` exists in environment
-  - protocol verification report is `liveReady=true`
-  - risk engine allows the trade
+  - 已配置 `BSC_HTTP_RPC`
+  - `WALLET_ADDRESS` 有效
+  - 环境变量中存在 `PRIVATE_KEY`
+  - 协议核验报告为 `liveReady=true`
+  - 风控引擎允许该交易
 
-## Verification
+## 验证
 
-Commands run:
+已运行命令：
 
 ```bash
 npm run verify
 ```
 
-Result:
+结果：
 
-- Typecheck passed.
-- 6 test files passed.
-- 15 tests passed.
-- Build passed for core, API, bot, dashboard, and protocol verifier.
+- 类型检查通过。
+- 6 个测试文件通过。
+- 15 个测试通过。
+- core、API、bot、面板、协议核验器构建通过。
 
-Live read-only smoke:
+只读链上冒烟检查：
 
-- Used public BNB Chain RPC only for `eth_call`.
-- Quoted a 1 USDT mint on market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2`.
-- `FTLensV2.simulateMint` returned a valid quote and slippage-adjusted `minOtOut`.
-- No signing, approve, or transaction broadcast was performed.
+- 仅使用公共 BNB Chain RPC 执行 `eth_call`。
+- 对市场 `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` 做了 1 USDT mint quote。
+- `FTLensV2.simulateMint` 返回有效 quote，并生成滑点调整后的 `minOtOut`。
+- 未执行签名、approve 或交易广播。
 
-## Still Blocked Before Real Money
+## 实盘前仍阻断
 
-- ABI must be generated from official source or exported from BscScan verified contracts.
-- A dedicated wallet and private RPC must be configured locally, not pasted into chat.
-- BscScan/manual trace for the latest market call path should be recorded.
-- Execution module still needs nonce/gas/preflight receipt handling and a manual confirmation path for the first J/U trades.
+- ABI 必须从官方源码生成，或从 BscScan 已验证合约导出。
+- 必须配置专用钱包和私有 RPC，不能把私钥发到聊天里。
+- 应记录最新市场调用路径的 BscScan/manual trace。
+- 执行模块仍需要 nonce/gas/preflight receipt 处理，以及首批 J/U 交易的人工确认路径。

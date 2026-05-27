@@ -1,42 +1,42 @@
-# Phase 8: Protocol Gate Precision
+# 阶段 8：协议门禁精细化
 
-Phase 8 improves protocol verification so live readiness is based on the real execution-critical path.
+阶段 8 改进协议核验逻辑，让实盘就绪状态基于真实执行关键路径判断。
 
-What changed:
+## 变更内容
 
-- Every protocol check now carries `blocksLiveExecution`.
-- `liveReady` now requires every blocking check to pass.
-- Nonblocking warnings stay visible but do not block small buy-path preflight.
-- PowerCurve docs/GitHub mismatch remains a nonblocking warning because the current buy path uses Router/Lens quote and swap preflight, not direct curve calls.
-- Receipt checks now inspect both:
-  - transaction `to`
-  - receipt log addresses
-- This covers Binance Wallet/account-router style transactions where `tx.to` is an account/aggregator contract but logs still include the 42 market/router path.
+- 每个协议检查项都增加 `blocksLiveExecution`。
+- `liveReady` 只要求所有阻断性检查通过。
+- 非阻断警告仍然显示，但不阻断小额买入路径预演。
+- PowerCurve 文档/GitHub 不一致仍保留为非阻断警告，因为当前买入路径使用 Router/Lens quote 与 swap 预演，不直接调用 curve。
+- 交易回执检查现在同时检查：
+  - 交易 `to`
+  - 交易回执日志地址
+- 这可以覆盖 Binance Wallet/account-router 风格交易：`tx.to` 是账户或聚合合约，但 logs 里仍包含 42 market/router 路径。
 
-## Latest Result
+## 最新结果
 
-Generated at `2026-05-27T04:28:25.665Z`:
+生成时间：`2026-05-27T04:28:25.665Z`
 
-- liveReady: `true`
-- pass: 22
-- warn: 1
-- fail: 0
-- blocking unresolved: 0
-- nonblocking warnings: 1
-- receipt checks matched 12/12 known router/controller/market paths through receipt log addresses
+- `liveReady=true`
+- 通过：22
+- 警告：1
+- 失败：0
+- 实盘阻断未解决项：0
+- 非阻断警告：1
+- 交易回执检查通过日志地址命中 12/12 条已知 router/controller/market 路径
 
-## Remaining Warning
+## 剩余警告
 
-`compare.docsGithub.PowerCurve` remains unresolved:
+`compare.docsGithub.PowerCurve` 仍未解决：
 
-- docs legacy PowerCurve: `0x0443E04e70E4285a6cA73eacaC5267f3B4cBb7Da`
+- 文档旧版 PowerCurve: `0x0443E04e70E4285a6cA73eacaC5267f3B4cBb7Da`
 - GitHub PowerCurve: `0xDC26047458FEa8Bd45164217CCb7eE90b9bE10B8`
 
-Do not build curve-specific logic from either address until this is manually resolved. The current execution path can proceed only through Router/Lens preflight.
+在人工确认前，不要基于任何一个 PowerCurve 地址构建曲线专用逻辑。当前执行路径只允许通过 Router/Lens 预演前进。
 
-## Verification
+## 验证
 
-Commands run:
+已运行命令：
 
 ```bash
 $env:BSC_HTTP_RPC='https://bsc-dataseed.binance.org'; npm run verify:protocol
