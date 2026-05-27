@@ -27,6 +27,60 @@ button {
   padding: 26px 0 30px;
 }
 
+.authShell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+}
+
+.authPanel {
+  width: min(460px, 100%);
+  padding: 24px;
+  border: 1px solid #d8e1dc;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.authCopy {
+  margin: 12px 0 18px;
+  color: #63756c;
+  line-height: 1.6;
+}
+
+.authForm {
+  display: grid;
+  gap: 12px;
+}
+
+.authForm label {
+  display: grid;
+  gap: 6px;
+  color: #46564f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.authForm input {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 10px;
+  border: 1px solid #cfd8d2;
+  border-radius: 8px;
+  color: #17201c;
+  background: #fbfcfa;
+  font: inherit;
+}
+
+.authForm button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  background: #314c40;
+  cursor: pointer;
+  font-weight: 800;
+}
+
 .topbar {
   display: flex;
   align-items: center;

@@ -47,8 +47,7 @@ const envSchema = z.object({
   API_HOST: z.string().default("0.0.0.0"),
   API_PORT: numberString(4210),
   API_AUTH_TOKEN: z.string().optional().default(""),
-  CORS_ORIGIN: z.string().optional().default(""),
-  VITE_API_BASE: z.string().default("http://localhost:4210")
+  CORS_ORIGIN: z.string().optional().default("")
 });
 
 export type AppConfig = z.infer<typeof envSchema>;

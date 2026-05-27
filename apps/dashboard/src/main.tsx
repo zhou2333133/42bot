@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { Activity, AlertTriangle, BarChart3, PauseCircle, Radio, RefreshCw, ShieldCheck, TerminalSquare, Zap } from "lucide-react";
+import { Activity, AlertTriangle, BarChart3, LogOut, PauseCircle, Radio, RefreshCw, ShieldCheck, TerminalSquare, Zap } from "lucide-react";
 import "./styles.css";
 
 type MarketStatus = "not_started" | "live" | "ended" | "resolved" | "finalised" | "all" | string;
@@ -204,11 +204,19 @@ interface JournalSummary {
   };
 }
 
-const apiBase = import.meta.env.VITE_API_BASE ?? "http://localhost:4210";
-const apiAuthToken = import.meta.env.VITE_API_AUTH_TOKEN ?? "";
-const apiHeaders = apiAuthToken ? { Authorization: `Bearer ${apiAuthToken}` } : undefined;
+const DEFAULT_API_BASE = `${window.location.protocol}//${window.location.hostname}:4210`;
+const STORED_API_BASE_KEY = "42bot.apiBase";
+const STORED_API_TOKEN_KEY = "42bot.apiToken";
+
+function authHeaders(token: string): HeadersInit | undefined {
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
+}
 
 function App() {
+  const [apiBase, setApiBase] = React.useState(() => localStorage.getItem(STORED_API_BASE_KEY) ?? DEFAULT_API_BASE);
+  const [apiToken, setApiToken] = React.useState(() => localStorage.getItem(STORED_API_TOKEN_KEY) ?? "");
+  const [tokenDraft, setTokenDraft] = React.useState("");
+  const [apiBaseDraft, setApiBaseDraft] = React.useState(apiBase);
   const [snapshot, setSnapshot] = React.useState<BotSnapshot | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -219,12 +227,21 @@ function App() {
   const [planning, setPlanning] = React.useState(false);
 
   const loadSnapshot = React.useCallback(async () => {
+    if (!apiToken) {
+      setLoading(false);
+      return;
+    }
     setError(null);
     try {
+      const headers = authHeaders(apiToken);
       const [snapshotResponse, journalResponse] = await Promise.all([
-        fetch(`${apiBase}/snapshot`, { headers: apiHeaders }),
-        fetch(`${apiBase}/journal`, { headers: apiHeaders })
+        fetch(`${apiBase}/snapshot`, { headers }),
+        fetch(`${apiBase}/journal`, { headers })
       ]);
+      if (snapshotResponse.status === 401 || journalResponse.status === 401) {
+        clearLogin();
+        throw new Error("认证失败，请重新输入 API token");
+      }
       if (!snapshotResponse.ok) throw new Error(`snapshot API ${snapshotResponse.status}`);
       if (!journalResponse.ok) throw new Error(`journal API ${journalResponse.status}`);
       setSnapshot((await snapshotResponse.json()) as BotSnapshot);
@@ -234,19 +251,50 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiBase, apiToken]);
 
   React.useEffect(() => {
+    if (!apiToken) return;
     void loadSnapshot();
     const id = window.setInterval(() => void loadSnapshot(), 15_000);
     return () => window.clearInterval(id);
-  }, [loadSnapshot]);
+  }, [apiToken, loadSnapshot]);
+
+  function saveLogin(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextBase = apiBaseDraft.trim().replace(/\/$/, "");
+    const nextToken = tokenDraft.trim();
+    if (!nextBase || !nextToken) {
+      setError("API 地址和 token 都不能为空");
+      return;
+    }
+    localStorage.setItem(STORED_API_BASE_KEY, nextBase);
+    localStorage.setItem(STORED_API_TOKEN_KEY, nextToken);
+    setApiBase(nextBase);
+    setApiToken(nextToken);
+    setTokenDraft("");
+    setError(null);
+    setLoading(true);
+  }
+
+  function clearLogin() {
+    localStorage.removeItem(STORED_API_TOKEN_KEY);
+    setApiToken("");
+    setSnapshot(null);
+    setJournal(null);
+    setExecutionPlan(null);
+  }
 
   async function refreshNow() {
+    if (!apiToken) return;
     setRefreshing(true);
     setError(null);
     try {
-      const response = await fetch(`${apiBase}/refresh`, { method: "POST", headers: apiHeaders });
+      const response = await fetch(`${apiBase}/refresh`, { method: "POST", headers: authHeaders(apiToken) });
+      if (response.status === 401) {
+        clearLogin();
+        throw new Error("认证失败，请重新输入 API token");
+      }
       if (!response.ok) throw new Error(`API ${response.status}`);
       setSnapshot((await response.json()) as BotSnapshot);
     } catch (currentError) {
@@ -265,7 +313,7 @@ function App() {
   const topOutcome = topMarket?.outcomes[0];
 
   async function planTopCandidate() {
-    if (!topMarket || !topOutcome) return;
+    if (!apiToken || !topMarket || !topOutcome) return;
     setPlanning(true);
     setPlanError(null);
     try {
@@ -276,7 +324,11 @@ function App() {
         slippageBps: "500",
         reason: "dashboard top candidate dry-run"
       });
-      const response = await fetch(`${apiBase}/execution/plan?${params.toString()}`, { headers: apiHeaders });
+      const response = await fetch(`${apiBase}/execution/plan?${params.toString()}`, { headers: authHeaders(apiToken) });
+      if (response.status === 401) {
+        clearLogin();
+        throw new Error("认证失败，请重新输入 API token");
+      }
       if (!response.ok) throw new Error(`API ${response.status}`);
       setExecutionPlan((await response.json()) as ExecutionPlan);
     } catch (currentError) {
@@ -286,12 +338,37 @@ function App() {
     }
   }
 
+  if (!apiToken) {
+    return (
+      <main className="shell authShell">
+        <section className="authPanel">
+          <p className="eyebrow">42bot Dashboard</p>
+          <h1>登录面板</h1>
+          <p className="authCopy">输入 VPS 的 API 地址和 `.env` 里的 `API_AUTH_TOKEN`。浏览器会记住这次登录。</p>
+          <form className="authForm" onSubmit={saveLogin}>
+            <label>
+              <span>API 地址</span>
+              <input value={apiBaseDraft} onChange={(event) => setApiBaseDraft(event.target.value)} placeholder={DEFAULT_API_BASE} />
+            </label>
+            <label>
+              <span>API Token</span>
+              <input value={tokenDraft} onChange={(event) => setTokenDraft(event.target.value)} type="password" autoComplete="current-password" />
+            </label>
+            <button type="submit">登录</button>
+          </form>
+          {error ? <div className="notice danger">{error}</div> : null}
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="shell">
       <header className="topbar">
         <div>
           <p className="eyebrow">42bot Phase 1</p>
           <h1>Event Token Monitor</h1>
+          <p className="subline">API: {apiBase}</p>
         </div>
         <div className="actions">
           <button type="button" className="iconButton" onClick={refreshNow} disabled={refreshing} title="Refresh snapshot">
@@ -299,6 +376,9 @@ function App() {
           </button>
           <button type="button" className="iconButton" onClick={planTopCandidate} disabled={planning || !topMarket || !topOutcome} title="Build dry-run execution plan">
             <TerminalSquare size={18} />
+          </button>
+          <button type="button" className="iconButton" onClick={clearLogin} title="退出登录">
+            <LogOut size={18} />
           </button>
         </div>
       </header>
