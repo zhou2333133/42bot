@@ -13,6 +13,10 @@ COPY apps/dashboard/package.json apps/dashboard/package.json
 RUN npm install
 
 COPY . .
+ARG VITE_API_BASE=http://127.0.0.1:4210
+ARG VITE_API_AUTH_TOKEN=
+ENV VITE_API_BASE=$VITE_API_BASE
+ENV VITE_API_AUTH_TOKEN=$VITE_API_AUTH_TOKEN
 RUN npm run build
 
 EXPOSE 4210 4220

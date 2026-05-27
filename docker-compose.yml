@@ -2,12 +2,15 @@ services:
   api:
     build:
       context: .
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-http://127.0.0.1:4210}
+        VITE_API_AUTH_TOKEN: ${VITE_API_AUTH_TOKEN:-}
     command: npm run start:api
     env_file:
       - path: .env
         required: false
     ports:
-      - "4210:4210"
+      - "127.0.0.1:4210:4210"
     volumes:
       - ./data:/app/data
     restart: unless-stopped
@@ -20,6 +23,9 @@ services:
   bot:
     build:
       context: .
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-http://127.0.0.1:4210}
+        VITE_API_AUTH_TOKEN: ${VITE_API_AUTH_TOKEN:-}
     command: npm run start:bot
     env_file:
       - path: .env
@@ -34,12 +40,15 @@ services:
   dashboard:
     build:
       context: .
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-http://127.0.0.1:4210}
+        VITE_API_AUTH_TOKEN: ${VITE_API_AUTH_TOKEN:-}
     command: npm --workspace @42bot/dashboard run preview -- --host 0.0.0.0 --port 4220
     env_file:
       - path: .env
         required: false
     ports:
-      - "4220:4220"
+      - "127.0.0.1:4220:4220"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4220/"]
