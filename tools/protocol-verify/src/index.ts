@@ -20,7 +20,7 @@ const REQUIRED_SOURCE_TOKENS = {
 } as const;
 
 const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const DEFAULT_REPORT_PATH = resolve(PROJECT_ROOT, "docs/protocol-verification-latest.md");
+const DEFAULT_REPORT_PATH = resolve(PROJECT_ROOT, "data/protocol-verification-latest.md");
 const DEFAULT_JSON_PATH = resolve(PROJECT_ROOT, "data/protocol-verification-latest.json");
 
 type Severity = "pass" | "warn" | "fail";
