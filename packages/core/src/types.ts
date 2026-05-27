@@ -184,6 +184,55 @@ export interface RiskDecision {
   mode: "live" | "blocked";
 }
 
+export type TradeSide = "buy" | "sell";
+
+export interface ProtocolGate {
+  liveReady: boolean;
+  pass: number;
+  warn: number;
+  fail: number;
+  generatedAt?: string;
+  reasons: string[];
+}
+
+export interface MintQuoteResult {
+  side: "buy";
+  market: string;
+  tokenId: string;
+  amountIn: bigint;
+  collateralFromUser: bigint;
+  collateralToTreasury: bigint;
+  collateralToIntegrator: bigint;
+  otToUser: bigint;
+  minOtOut: bigint;
+}
+
+export interface RedeemQuoteResult {
+  side: "sell";
+  market: string;
+  tokenId: string;
+  amountIn: bigint;
+  collateralToUser: bigint;
+  collateralToTreasury: bigint;
+  collateralToIntegrator: bigint;
+  otFromUser: bigint;
+  minCollateralOut: bigint;
+}
+
+export type QuoteResult = MintQuoteResult | RedeemQuoteResult;
+
+export interface PreparedTransaction {
+  to: string;
+  data: `0x${string}`;
+  value: bigint;
+  description: string;
+}
+
+export interface ExecutionReadiness {
+  ready: boolean;
+  reasons: string[];
+}
+
 export interface BotSnapshot {
   updatedAt: string;
   config: {

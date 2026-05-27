@@ -29,6 +29,7 @@ API 默认监听 `http://localhost:4210`，面板默认监听 `http://localhost:
 
 - [docs/phase-1.md](docs/phase-1.md)
 - [docs/phase-2.md](docs/phase-2.md)
+- [docs/phase-3.md](docs/phase-3.md)
 - [docs/protocol-verification-latest.md](docs/protocol-verification-latest.md)
 
 ## 阶段门禁
