@@ -1,13 +1,13 @@
 # Protocol Verification Latest
 
-Generated at: 2026-05-27T02:44:38.778Z
+Generated at: 2026-05-27T02:45:50.979Z
 
 Live execution ready: **NO**
 
 ## Check Summary
 
-- pass: 21
-- warn: 2
+- pass: 22
+- warn: 1
 - fail: 0
 
 ## Checks
@@ -34,27 +34,25 @@ Live execution ready: **NO**
 - PASS `source.lens`: lens source token check 4/4
 - PASS `source.controller`: controller source token check 4/4
 - PASS `activity.transactions`: Found 12 recent REST activity transactions with hashes
-- WARN `rpc.receipts`: BSC_HTTP_RPC missing; transaction receipt checks skipped (Set BSC_HTTP_RPC in .env to verify recent activity transaction destinations and status.)
+- PASS `rpc.receipts`: Receipt checks matched 10/12 known router/controller destinations
 
 ## Recent Transactions
 
-- `0x7945827b522d3020f1e7b05000375026cf69459fd2eda0f749bf2f01022cd525` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` matchedKnownContract=false; receipt skipped because BSC_HTTP_RPC is unset
-- `0x0178b8737db76bfe0b98a4b494350c8623def6597d0366bcddcc3a7387013bb6` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` matchedKnownContract=false; receipt skipped because BSC_HTTP_RPC is unset
-- `0x29de9ed16de781f7ab4c30e5a35e72cbdeb689a8a8010945de0962c7614376b3` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` matchedKnownContract=false; receipt skipped because BSC_HTTP_RPC is unset
-- `0x2a289f7edbc26d2b7555751d082eedfeb3a652c610bde451a019a9d015ad6ad2` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` matchedKnownContract=false; receipt skipped because BSC_HTTP_RPC is unset
-- `0x6f6edf7aa5c9bee3edd8493acc49211ee3ff22bc166e669b711dd1092ad1cc43` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` matchedKnownContract=false; receipt skipped because BSC_HTTP_RPC is unset
-- `0x36db86af062ecc68814c0a790b315a2be9f9305ea472e1d8c7aa9c030e2918a4` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` matchedKnownContract=false; receipt skipped because BSC_HTTP_RPC is unset
-- `0xf885c2f1a6311c1cde13c0090e23df27ad2ff675a7e798cb7532138a9ff6d422` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` matchedKnownContract=false; receipt skipped because BSC_HTTP_RPC is unset
-- `0x1fe136471059f00cead11fc1249db452bdaf2ad010dad4a65f3e9414eaca9656` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` matchedKnownContract=false; receipt skipped because BSC_HTTP_RPC is unset
-- `0xd22e15761c0807e395aa9dc899ee07ec4efbecbcc6fff540aec51c3c3360b905` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` matchedKnownContract=false; receipt skipped because BSC_HTTP_RPC is unset
-- `0xcf933a1a147a3f668bfe0535a3921500fd96d166a58c9d253ec9c4546b927231` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` matchedKnownContract=false; receipt skipped because BSC_HTTP_RPC is unset
-- `0xc1975348c6ba8c01abb52f0ca7c1fd144315880f8f0ec3cec85dda000861c9b3` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` matchedKnownContract=false; receipt skipped because BSC_HTTP_RPC is unset
-- `0x696cf88d92b7b9e30a397a5ad541853fa633e2fdb4bd52b02c91b1246426a508` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` matchedKnownContract=false; receipt skipped because BSC_HTTP_RPC is unset
+- `0x7945827b522d3020f1e7b05000375026cf69459fd2eda0f749bf2f01022cd525` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x0000000071727de22e5e9d8baf0edac6f37da032` matchedKnownContract=false
+- `0x0178b8737db76bfe0b98a4b494350c8623def6597d0366bcddcc3a7387013bb6` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
+- `0x29de9ed16de781f7ab4c30e5a35e72cbdeb689a8a8010945de0962c7614376b3` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
+- `0x2a289f7edbc26d2b7555751d082eedfeb3a652c610bde451a019a9d015ad6ad2` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
+- `0x6f6edf7aa5c9bee3edd8493acc49211ee3ff22bc166e669b711dd1092ad1cc43` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
+- `0x36db86af062ecc68814c0a790b315a2be9f9305ea472e1d8c7aa9c030e2918a4` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
+- `0xf885c2f1a6311c1cde13c0090e23df27ad2ff675a7e798cb7532138a9ff6d422` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
+- `0x1fe136471059f00cead11fc1249db452bdaf2ad010dad4a65f3e9414eaca9656` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
+- `0xd22e15761c0807e395aa9dc899ee07ec4efbecbcc6fff540aec51c3c3360b905` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
+- `0xcf933a1a147a3f668bfe0535a3921500fd96d166a58c9d253ec9c4546b927231` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x0000000071727de22e5e9d8baf0edac6f37da032` matchedKnownContract=false
+- `0xc1975348c6ba8c01abb52f0ca7c1fd144315880f8f0ec3cec85dda000861c9b3` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
+- `0x696cf88d92b7b9e30a397a5ad541853fa633e2fdb4bd52b02c91b1246426a508` MINT market `0x3d3d1c0d338Ff5B645d0AC7772Fe45B85F93E3A2` to `0x888888886619275d33c00d3bc62df94d700dcd42` matchedKnownContract=true
 
 ## Next Required Actions
 
-- Set BSC_HTTP_RPC and rerun npm run verify:protocol to verify recent transaction receipts.
-- Inspect one latest market transaction trace on BscScan and record the actual call path before enabling execution.
 - Resolve PowerCurve docs/github address mismatch; treat docs table legacy curve and github PowerCurve separately.
 - Generate ABI from official sources or verified BscScan source in Phase 3; do not handwrite ABI.
 
