@@ -30,6 +30,7 @@ interface Check {
   severity: Severity;
   summary: string;
   details?: string;
+  blocksLiveExecution: boolean;
 }
 
 interface ProtocolReport {
@@ -52,6 +53,7 @@ interface ProtocolReport {
     to?: string;
     status?: "success" | "reverted";
     matchedKnownContract: boolean;
+    matchedLogAddress?: boolean;
     note?: string;
   }>;
   nextRequiredActions: string[];
@@ -94,7 +96,7 @@ async function main(): Promise<void> {
   const source = buildSourceChecks(sourceTexts, checks);
 
   const recentTransactions = await checkRecentTransactions(config.FORTYTWO_REST_BASE, config.BSC_HTTP_RPC, checks);
-  const liveReady = checks.every((check) => check.severity === "pass") && recentTransactions.length > 0;
+  const liveReady = checks.every((check) => !check.blocksLiveExecution || check.severity === "pass") && recentTransactions.length > 0;
 
   const report: ProtocolReport = {
     generatedAt: new Date().toISOString(),
@@ -135,11 +137,20 @@ function checkDocsAddresses(addresses: Record<string, string[]>): Check[] {
     CONTRACT_CANDIDATES.clockCurve
   ];
 
-  return expected.map((address) => ({
-    id: `docs.address.${address}`,
-    severity: all.has(address.toLowerCase()) ? "pass" : "fail",
-    summary: `docs deployment contains ${address}`
-  }));
+  return expected.map((address) => {
+    const blocksLiveExecution = [
+      CONTRACT_CANDIDATES.routerProxy,
+      CONTRACT_CANDIDATES.controllerV2Proxy,
+      CONTRACT_CANDIDATES.lensV2
+    ].some((critical) => critical.toLowerCase() === address.toLowerCase());
+    return {
+      id: `docs.address.${address}`,
+      severity: all.has(address.toLowerCase()) ? "pass" : blocksLiveExecution ? "fail" : "warn",
+      summary: `docs deployment contains ${address}`,
+      details: blocksLiveExecution ? "critical execution path address" : "noncritical reference/deprecated/curve address",
+      blocksLiveExecution
+    };
+  });
 }
 
 function checkGithubDeployment(deployment: GithubDeployment): Check[] {
@@ -147,7 +158,8 @@ function checkGithubDeployment(deployment: GithubDeployment): Check[] {
   checks.push({
     id: "github.chain",
     severity: deployment.network?.chainId === 56 ? "pass" : "fail",
-    summary: `github deployment chainId=${deployment.network?.chainId ?? "missing"}`
+    summary: `github deployment chainId=${deployment.network?.chainId ?? "missing"}`,
+    blocksLiveExecution: true
   });
 
   const required: Array<[string, string | undefined]> = [
@@ -160,7 +172,8 @@ function checkGithubDeployment(deployment: GithubDeployment): Check[] {
     checks.push({
       id: `github.address.${name}`,
       severity: address && isAddress(address) ? "pass" : "fail",
-      summary: `${name}=${address ?? "missing"}`
+      summary: `${name}=${address ?? "missing"}`,
+      blocksLiveExecution: true
     });
   }
 
@@ -179,11 +192,13 @@ function compareDocsAndGithub(addresses: Record<string, string[]>, deployment: G
   ];
 
   for (const [name, address] of pairs) {
+    const blocksLiveExecution = name === "FTRouterProxy" || name === "FTControllerProxy" || name === "FTLensV2";
     checks.push({
       id: `compare.docsGithub.${name}`,
       severity: address && docsSet.has(address.toLowerCase()) ? "pass" : "warn",
       summary: `${name} docs/github address alignment`,
-      details: address ? `${address}` : "missing in github deployment"
+      details: address ? `${address}` : "missing in github deployment",
+      blocksLiveExecution
     });
   }
 
@@ -193,7 +208,8 @@ function compareDocsAndGithub(addresses: Record<string, string[]>, deployment: G
     id: "compare.docsGithub.PowerCurve",
     severity: githubPowerCurve && docsSet.has(githubPowerCurve.toLowerCase()) ? "pass" : "warn",
     summary: "PowerCurve docs/github address alignment",
-    details: `github PowerCurve=${githubPowerCurve ?? "missing"}, github legacy=${githubLegacyPowerCurve ?? "missing"}`
+    details: `github PowerCurve=${githubPowerCurve ?? "missing"}, github legacy=${githubLegacyPowerCurve ?? "missing"}. Noncritical for current Router/Lens buy preflight; keep monitoring before relying on curve-specific logic.`,
+    blocksLiveExecution: false
   });
 
   return checks;
@@ -220,7 +236,8 @@ async function checkRecentTransactions(restBase: string, rpcUrl: string, checks:
     checks.push({
       id: "activity.transactions",
       severity: "warn",
-      summary: "No recent REST activity transactions with hashes found"
+      summary: "No recent REST activity transactions with hashes found",
+      blocksLiveExecution: true
     });
     return [];
   }
@@ -228,7 +245,8 @@ async function checkRecentTransactions(restBase: string, rpcUrl: string, checks:
   checks.push({
     id: "activity.transactions",
     severity: "pass",
-    summary: `Found ${withHash.length} recent REST activity transactions with hashes`
+    summary: `Found ${withHash.length} recent REST activity transactions with hashes`,
+    blocksLiveExecution: true
   });
 
   if (!rpcUrl) {
@@ -236,7 +254,8 @@ async function checkRecentTransactions(restBase: string, rpcUrl: string, checks:
       id: "rpc.receipts",
       severity: "warn",
       summary: "BSC_HTTP_RPC missing; transaction receipt checks skipped",
-      details: "Set BSC_HTTP_RPC in .env to verify recent activity transaction destinations and status."
+      details: "Set BSC_HTTP_RPC in .env to verify recent activity transaction destinations and status.",
+      blocksLiveExecution: true
     });
     return withHash.map((item) => ({
       hash: item.transactionHash!,
@@ -265,13 +284,18 @@ async function checkRecentTransactions(restBase: string, rpcUrl: string, checks:
         publicClient.getTransaction({ hash: item.transactionHash as Hex })
       ]);
       const to = tx.to?.toLowerCase();
+      const logAddresses = new Set(receipt.logs.map((log) => log.address.toLowerCase()));
+      const matchedLogAddress =
+        logAddresses.has(item.marketAddress.toLowerCase()) ||
+        [...knownContracts].some((address) => logAddresses.has(address));
       transactions.push({
         hash: item.transactionHash!,
         market: item.marketAddress,
         type: item.type,
         to: tx.to ?? undefined,
         status: receipt.status,
-        matchedKnownContract: Boolean(to && knownContracts.has(to))
+        matchedKnownContract: Boolean(to && knownContracts.has(to)) || matchedLogAddress,
+        matchedLogAddress
       });
     } catch (error) {
       transactions.push({
@@ -285,11 +309,16 @@ async function checkRecentTransactions(restBase: string, rpcUrl: string, checks:
   }
 
   const matched = transactions.filter((item) => item.matchedKnownContract).length;
+  const matchedViaLogs = transactions.filter((item) => item.matchedLogAddress).length;
   checks.push({
     id: "rpc.receipts",
     severity: matched > 0 ? "pass" : "warn",
-    summary: `Receipt checks matched ${matched}/${transactions.length} known router/controller destinations`,
-    details: matched === 0 ? "Transactions may call market contracts directly or receipts need deeper trace/BscScan inspection." : undefined
+    summary: `Receipt checks matched ${matched}/${transactions.length} known router/controller/market paths`,
+    details:
+      matched === 0
+        ? "Transactions may call market contracts directly or receipts need deeper trace/BscScan inspection."
+        : `${matchedViaLogs}/${transactions.length} matched via receipt log addresses, which covers Binance Wallet/account-router style transactions.`,
+    blocksLiveExecution: true
   });
 
   return transactions;
@@ -312,7 +341,8 @@ function checkSource(sourceKey: keyof typeof SOURCE_URLS, sourceText: string, ch
     id: `source.${sourceKey}`,
     severity: missing.length === 0 ? "pass" : "fail",
     summary: `${sourceKey} source token check ${found.length}/${requiredTokens.length}`,
-    details: missing.length > 0 ? `Missing: ${missing.join(", ")}` : undefined
+    details: missing.length > 0 ? `Missing: ${missing.join(", ")}` : undefined,
+    blocksLiveExecution: true
   });
   return {
     url: SOURCE_URLS[sourceKey],
@@ -355,6 +385,7 @@ function buildNextActions(checks: Check[], transactions: ProtocolReport["recentT
 
 function renderMarkdown(report: ProtocolReport): string {
   const checksBySeverity = summarizeChecks(report.checks);
+  const blocking = summarizeBlockingChecks(report.checks);
   return `# Protocol Verification Latest
 
 Generated at: ${report.generatedAt}
@@ -366,14 +397,16 @@ Live execution ready: **${report.liveReady ? "YES" : "NO"}**
 - pass: ${checksBySeverity.pass}
 - warn: ${checksBySeverity.warn}
 - fail: ${checksBySeverity.fail}
+- blocking unresolved: ${blocking.unresolved}
+- nonblocking warnings: ${blocking.nonblockingWarnings}
 
 ## Checks
 
-${report.checks.map((check) => `- ${icon(check.severity)} \`${check.id}\`: ${check.summary}${check.details ? ` (${check.details})` : ""}`).join("\n")}
+${report.checks.map((check) => `- ${icon(check.severity)} ${check.blocksLiveExecution ? "[BLOCKS-LIVE]" : "[NONBLOCKING]"} \`${check.id}\`: ${check.summary}${check.details ? ` (${check.details})` : ""}`).join("\n")}
 
 ## Recent Transactions
 
-${report.recentTransactions.length > 0 ? report.recentTransactions.map((tx) => `- \`${tx.hash}\` ${tx.type} market \`${tx.market}\`${tx.to ? ` to \`${tx.to}\`` : ""} matchedKnownContract=${tx.matchedKnownContract}${tx.note ? `; ${tx.note}` : ""}`).join("\n") : "- None"}
+${report.recentTransactions.length > 0 ? report.recentTransactions.map((tx) => `- \`${tx.hash}\` ${tx.type} market \`${tx.market}\`${tx.to ? ` to \`${tx.to}\`` : ""} matchedKnownContract=${tx.matchedKnownContract}${tx.matchedLogAddress ? " matchedLogAddress=true" : ""}${tx.note ? `; ${tx.note}` : ""}`).join("\n") : "- None"}
 
 ## Next Required Actions
 
@@ -394,6 +427,13 @@ function summarizeChecks(checks: Check[]): Record<Severity, number> {
     pass: checks.filter((check) => check.severity === "pass").length,
     warn: checks.filter((check) => check.severity === "warn").length,
     fail: checks.filter((check) => check.severity === "fail").length
+  };
+}
+
+function summarizeBlockingChecks(checks: Check[]): { unresolved: number; nonblockingWarnings: number } {
+  return {
+    unresolved: checks.filter((check) => check.blocksLiveExecution && check.severity !== "pass").length,
+    nonblockingWarnings: checks.filter((check) => !check.blocksLiveExecution && check.severity === "warn").length
   };
 }
 

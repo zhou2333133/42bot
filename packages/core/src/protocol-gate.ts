@@ -4,7 +4,7 @@ import type { ProtocolGate } from "./types.js";
 interface ProtocolReportFile {
   generatedAt?: string;
   liveReady?: boolean;
-  checks?: Array<{ severity?: string; summary?: string; id?: string }>;
+  checks?: Array<{ severity?: string; summary?: string; id?: string; blocksLiveExecution?: boolean }>;
 }
 
 export async function loadProtocolGate(path: string): Promise<ProtocolGate> {
@@ -16,7 +16,10 @@ export async function loadProtocolGate(path: string): Promise<ProtocolGate> {
     const warn = checks.filter((check) => check.severity === "warn").length;
     const pass = checks.filter((check) => check.severity === "pass").length;
     const reasons = checks
-      .filter((check) => check.severity !== "pass")
+      .filter((check) => check.severity !== "pass" && check.blocksLiveExecution !== false)
+      .map((check) => `${check.id ?? "unknown"}: ${check.summary ?? check.severity}`);
+    const nonblockingWarnings = checks
+      .filter((check) => check.severity !== "pass" && check.blocksLiveExecution === false)
       .map((check) => `${check.id ?? "unknown"}: ${check.summary ?? check.severity}`);
 
     return {
@@ -25,7 +28,7 @@ export async function loadProtocolGate(path: string): Promise<ProtocolGate> {
       pass,
       warn,
       fail,
-      reasons
+      reasons: [...reasons, ...nonblockingWarnings.map((reason) => `nonblocking: ${reason}`)]
     };
   } catch (error) {
     return {

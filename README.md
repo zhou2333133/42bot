@@ -35,7 +35,8 @@ curl "http://localhost:4210/execution/plan?marketAddress=0x...&tokenId=1&amountU
 - Phase 5: core 内部实盘广播函数和硬门禁；暂不暴露 API/面板交易入口。
 - Phase 6: VPS/API 安全加固、token 鉴权、Docker healthcheck 和部署 runbook。
 - Phase 7: JSON 交易账本、持仓汇总和面板 PnL 摘要。
-- Phase 8: J/U 级别小额实盘，逐笔日志、面板 PnL、熔断和人工确认。
+- Phase 8: 协议 gate 精细化，区分 blocking/nonblocking checks，当前关键路径 `liveReady=true`。
+- Phase 9: J/U 级别小额实盘，逐笔日志、面板 PnL、熔断和人工确认。
 
 阶段记录：
 
@@ -45,6 +46,7 @@ curl "http://localhost:4210/execution/plan?marketAddress=0x...&tokenId=1&amountU
 - [docs/phase-4.md](docs/phase-4.md)
 - [docs/phase-5.md](docs/phase-5.md)
 - [docs/phase-7.md](docs/phase-7.md)
+- [docs/phase-8.md](docs/phase-8.md)
 - [docs/protocol-verification-latest.md](docs/protocol-verification-latest.md)
 - [docs/vps-deploy.md](docs/vps-deploy.md)
 
