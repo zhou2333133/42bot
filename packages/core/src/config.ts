@@ -38,6 +38,8 @@ const envSchema = z.object({
   INTEGRATOR_ADDRESS: z.string().optional().default(""),
   INTEGRATOR_FEE_BPS: numberString(0),
   PROTOCOL_REPORT_JSON_PATH: z.string().default("./data/protocol-verification-latest.json"),
+  SETTINGS_FILE: z.string().default("./data/settings.json"),
+  RUNTIME_LOG_FILE: z.string().default("./data/runtime-log.json"),
   JOURNAL_FILE: z.string().default("./data/journal.json"),
   REQUIRE_REAL_MINTS: booleanString.default(true),
   HOT_MARKET_MIN_SCORE: numberString(70),
@@ -58,6 +60,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
     ...parsed,
     PROTOCOL_REPORT_JSON_PATH: resolveConfigPath(parsed.PROTOCOL_REPORT_JSON_PATH, basePath),
+    SETTINGS_FILE: resolveConfigPath(parsed.SETTINGS_FILE, basePath),
+    RUNTIME_LOG_FILE: resolveConfigPath(parsed.RUNTIME_LOG_FILE, basePath),
     JOURNAL_FILE: resolveConfigPath(parsed.JOURNAL_FILE, basePath),
     STATE_FILE: resolveConfigPath(parsed.STATE_FILE, basePath)
   };

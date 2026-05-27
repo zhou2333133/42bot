@@ -372,6 +372,41 @@ export interface JournalSummary {
   };
 }
 
+export interface RuntimeSettings {
+  LIVE_TRADING?: boolean;
+  KILL_SWITCH?: boolean;
+  MAX_TRADE_USDT?: number;
+  DAILY_MAX_USDT?: number;
+  MAX_OPEN_POSITIONS?: number;
+  MAX_SLIPPAGE_BPS?: number;
+  MAX_GAS_GWEI?: number;
+  REQUIRE_REAL_MINTS?: boolean;
+  HOT_MARKET_MIN_SCORE?: number;
+  MARKET_LOOKBACK_LIMIT?: number;
+  POLL_INTERVAL_MS?: number;
+}
+
+export interface RuntimeSettingsView {
+  saved: RuntimeSettings;
+  effective: Required<RuntimeSettings>;
+  updatedAt?: string;
+}
+
+export interface RuntimeLogEntry {
+  id: string;
+  createdAt: string;
+  level: "info" | "warn" | "error";
+  service: "api" | "bot" | "live-buy" | "system";
+  event: string;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+export interface RuntimeLogSummary {
+  updatedAt: string;
+  entries: RuntimeLogEntry[];
+}
+
 export interface BotSnapshot {
   updatedAt: string;
   config: {

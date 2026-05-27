@@ -10,6 +10,8 @@ export * from "./protocol-gate.js";
 export * from "./quoter.js";
 export * from "./rest-client.js";
 export * from "./risk.js";
+export * from "./runtime-log.js";
+export * from "./settings.js";
 export * from "./state-store.js";
 export * from "./strategy.js";
 export * from "./token-id.js";

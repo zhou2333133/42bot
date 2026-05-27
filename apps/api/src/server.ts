@@ -2,7 +2,11 @@ import cors from "cors";
 import express from "express";
 import {
   JsonJournalStore,
+  JsonRuntimeLogStore,
+  JsonRuntimeSettingsStore,
   JsonStateStore,
+  applyRuntimeSettings,
+  buildRuntimeSettingsView,
   buildExecutionPlan,
   buildSnapshot,
   loadConfig,
@@ -14,6 +18,8 @@ import { applySecurityHeaders, requireApiAuth } from "./security.js";
 const config = loadConfig();
 const store = new JsonStateStore(config.STATE_FILE);
 const journalStore = new JsonJournalStore(config.JOURNAL_FILE);
+const settingsStore = new JsonRuntimeSettingsStore(config.SETTINGS_FILE);
+const runtimeLogStore = new JsonRuntimeLogStore(config.RUNTIME_LOG_FILE);
 const app = express();
 
 app.use(applySecurityHeaders);
@@ -50,7 +56,42 @@ app.get("/snapshot", async (_request, response, next) => {
 app.post("/refresh", async (_request, response, next) => {
   try {
     const snapshot = await refreshSnapshot();
+    await appendApiLog("info", "manual_refresh", "面板触发了一次手动刷新", {
+      markets: snapshot.markets.length,
+      candidates: snapshot.scores.filter((score) => score.action === "candidate").length
+    });
     response.json(snapshot);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/settings", async (_request, response, next) => {
+  try {
+    response.json(buildRuntimeSettingsView(config, await settingsStore.read()));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/settings", async (request, response, next) => {
+  try {
+    const saved = await settingsStore.patch(request.body);
+    const view = buildRuntimeSettingsView(config, saved);
+    cachedSnapshot = null;
+    await appendApiLog("info", "settings_updated", "面板更新了运行设置", {
+      changed: Object.keys(request.body as Record<string, unknown>)
+    });
+    response.json(view);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/logs", async (request, response, next) => {
+  try {
+    const limit = Number(request.query.limit ?? 120);
+    response.json(await runtimeLogStore.read(Number.isFinite(limit) ? limit : 120));
   } catch (error) {
     next(error);
   }
@@ -87,11 +128,19 @@ app.get("/execution/plan", async (request, response, next) => {
   try {
     const intent = parseTradeIntent(request.query);
     const side = parseSide(request.query.side);
+    const effectiveConfig = await loadEffectiveConfig();
     const plan = await buildExecutionPlan({
-      config,
+      config: effectiveConfig,
       intent,
       side,
       skipChainPreflight: request.query.preflight === "false"
+    });
+    await appendApiLog(plan.broadcastReady ? "info" : "warn", "execution_plan", "生成了一次执行计划", {
+      marketAddress: intent.marketAddress,
+      tokenId: intent.tokenId,
+      amountUsdt: intent.amountUsdt,
+      broadcastReady: plan.broadcastReady,
+      blockedReasons: plan.blockedReasons.slice(0, 5)
     });
     response.json(toJson(plan));
   } catch (error) {
@@ -103,7 +152,7 @@ app.post("/control/pause", (_request, response) => {
   response.status(409).json({
     ok: false,
     error: "control_not_enabled",
-    message: "Phase 1 is read-only. Trading controls are enabled only after execution and kill-switch storage are implemented."
+    message: "当前阶段不开放面板真实交易控制。真实买入请继续使用 VPS 命令行，并先确认执行计划。"
   });
 });
 
@@ -111,12 +160,12 @@ app.post("/control/resume", (_request, response) => {
   response.status(409).json({
     ok: false,
     error: "control_not_enabled",
-    message: "Phase 1 is read-only. Trading controls are enabled only after execution and kill-switch storage are implemented."
+    message: "当前阶段不开放面板真实交易控制。真实买入请继续使用 VPS 命令行，并先确认执行计划。"
   });
 });
 
 app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
-  const message = error instanceof Error ? error.message : "unknown error";
+  const message = error instanceof Error ? error.message : "未知错误";
   response.status(500).json({
     ok: false,
     error: "internal_error",
@@ -151,7 +200,8 @@ async function loadSnapshot(): Promise<BotSnapshot> {
 
 async function refreshSnapshot(): Promise<BotSnapshot> {
   if (!refreshInFlight) {
-    refreshInFlight = buildSnapshot(config)
+    refreshInFlight = loadEffectiveConfig()
+      .then((effectiveConfig) => buildSnapshot(effectiveConfig))
       .then(async (snapshot) => {
         cachedSnapshot = snapshot;
         await store.write(snapshot);
@@ -163,6 +213,26 @@ async function refreshSnapshot(): Promise<BotSnapshot> {
   }
 
   return refreshInFlight;
+}
+
+async function loadEffectiveConfig() {
+  const settings = await settingsStore.read();
+  return applyRuntimeSettings(config, settings.settings);
+}
+
+async function appendApiLog(
+  level: "info" | "warn" | "error",
+  event: string,
+  message: string,
+  details?: Record<string, unknown>
+): Promise<void> {
+  await runtimeLogStore.append({
+    level,
+    service: "api",
+    event,
+    message,
+    details
+  });
 }
 
 function compareScores(left: MarketScore, right: MarketScore): number {
@@ -183,10 +253,10 @@ function parseTradeIntent(query: express.Request["query"]): TradeIntent {
     throw new Error("tokenId query parameter is required");
   }
   if (!Number.isFinite(amountUsdt) || amountUsdt <= 0) {
-    throw new Error("amountUsdt must be a positive number");
+    throw new Error("amountUsdt 必须是大于 0 的数字");
   }
   if (!Number.isInteger(slippageBps) || slippageBps < 0) {
-    throw new Error("slippageBps must be a non-negative integer");
+    throw new Error("slippageBps 必须是非负整数");
   }
 
   return {
@@ -194,7 +264,7 @@ function parseTradeIntent(query: express.Request["query"]): TradeIntent {
     tokenId,
     amountUsdt,
     slippageBps,
-    reason: typeof query.reason === "string" && query.reason.trim() ? query.reason : "manual dry-run plan"
+    reason: typeof query.reason === "string" && query.reason.trim() ? query.reason : "手动执行前计划"
   };
 }
 

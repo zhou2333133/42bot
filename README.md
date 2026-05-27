@@ -1,13 +1,15 @@
 # 42bot 完整中文手册
 
-42bot 是一个 42space Event Token 小额实盘狙击机器人。当前版本支持：
+42bot 是一个 42space 事件代币小额实盘狙击机器人。当前版本支持：
 
-- 监控 42space 市场和 activity
+- 监控 42space 市场和链上活动
 - 对新盘/早期盘做策略评分
-- 展示网页面板
+- 展示全中文网页面板
+- 在面板修改运行设置，并让机器人下一轮轮询生效
+- 在面板查看可读运行日志
 - 生成买入前执行计划
-- 做 quote、余额检查、gas 检查、`eth_call` 预演
-- 手动 CLI 小额实盘买入
+- 做报价、余额检查、燃料费检查、`eth_call` 预演
+- 手动命令行小额实盘买入
 - 写入 JSON 交易账本
 
 重要：一开始先用免费公共 BNB RPC 和 J/U 级别小金额测试。公共 RPC 适合跑通流程，不适合高速狙击。确认流程稳定后，再换成注册的免费/付费 RPC。
@@ -20,7 +22,7 @@
 新盘发现 -> 热度确认 -> 小额早期买入 -> 快速止盈/止损 -> 默认不持到结算
 ```
 
-当前实盘入口是手动 CLI，不在网页面板放真实交易按钮。面板只做观察、策略评分、执行计划和账本展示。
+当前实盘入口是手动命令行，不在网页面板放真实交易按钮。面板负责观察、策略评分、执行计划、运行设置、运行日志和账本展示。
 
 ## 2. 准备 VPS
 
@@ -88,10 +90,12 @@ KILL_SWITCH=true
 
 API_HOST=0.0.0.0
 API_PORT=4210
-API_AUTH_TOKEN=<随机登录 token>
+API_AUTH_TOKEN=<随机登录令牌>
 CORS_ORIGIN=
 
 STATE_FILE=./data/state.json
+SETTINGS_FILE=./data/settings.json
+RUNTIME_LOG_FILE=./data/runtime-log.json
 JOURNAL_FILE=./data/journal.json
 PROTOCOL_REPORT_JSON_PATH=./data/protocol-verification-latest.json
 
@@ -103,7 +107,7 @@ MAX_GAS_GWEI=5
 LIVE_TRADING_CONFIRMATION=
 ```
 
-生成面板登录 token：
+生成面板登录令牌：
 
 ```bash
 openssl rand -hex 32
@@ -122,7 +126,7 @@ WALLET_ADDRESS=<专用小额热钱包地址>
 PRIVATE_KEY=<专用小额热钱包私钥>
 ```
 
-不要用主钱包。这个钱包只放 J/U 级别测试资金和少量 BNB gas。
+不要用主钱包。这个钱包只放 J/U 级别测试资金和少量 BNB 燃料费。
 
 ## 6. 启动机器人
 
@@ -139,13 +143,67 @@ docker compose logs -f api bot dashboard
 
 打开面板后：
 
-1. API 地址填 `http://你的VPS-IP:4210`
-2. API Token 填 `.env` 里的 `API_AUTH_TOKEN`
+1. 接口地址填 `http://你的VPS-IP:4210`
+2. 登录令牌填 `.env` 里的 `API_AUTH_TOKEN`
 3. 登录一次后浏览器会记住
 
-如果改了 `API_AUTH_TOKEN`，重启容器后在面板右上角退出，再输入新 token。
+如果改了 `API_AUTH_TOKEN`，重启容器后在面板右上角退出，再输入新登录令牌。
 
-## 7. 基础检查
+## 7. 面板能改哪些设置
+
+面板的“运行设置”会写入：
+
+```text
+data/settings.json
+```
+
+这些设置会覆盖 `.env` 里的同名默认值。保存后：
+
+- 机器人后台轮询会在下一轮自动生效。
+- 接口服务生成执行计划会立即读取新设置。
+- 命令行小额买入也会读取新设置。
+
+面板可修改：
+
+- 实盘模式：对应 `LIVE_TRADING`
+- 熔断开关：对应 `KILL_SWITCH`
+- 要求真实买入记录：对应 `REQUIRE_REAL_MINTS`
+- 单笔上限：对应 `MAX_TRADE_USDT`
+- 日上限：对应 `DAILY_MAX_USDT`
+- 最大持仓数：对应 `MAX_OPEN_POSITIONS`
+- 最大滑点基点：对应 `MAX_SLIPPAGE_BPS`
+- 最大燃料费：对应 `MAX_GAS_GWEI`
+- 候选分数阈值：对应 `HOT_MARKET_MIN_SCORE`
+- 市场回看数量：对应 `MARKET_LOOKBACK_LIMIT`
+- 轮询间隔毫秒：对应 `POLL_INTERVAL_MS`
+
+这些仍然只在 VPS 的 `.env` 里改，不放进面板：
+
+- 钱包地址：`WALLET_ADDRESS`
+- 私钥：`PRIVATE_KEY`
+- BNB 链接口：`BSC_HTTP_RPC`、`BSC_WS_RPC`
+- 面板登录令牌：`API_AUTH_TOKEN`
+- 实盘确认短语：`LIVE_TRADING_CONFIRMATION`
+- 协议报告路径、账本路径、状态文件路径
+
+## 8. 运行日志怎么看
+
+面板右侧“运行日志”会显示机器人正在做什么，例如启动、开始轮询、写入快照、发现候选市场、保存设置、生成执行计划、命令行实盘结果。
+
+日志文件在：
+
+```text
+data/runtime-log.json
+```
+
+接口也可以直接查看：
+
+```bash
+source .env
+curl -H "Authorization: Bearer $API_AUTH_TOKEN" "http://127.0.0.1:4210/logs?limit=120"
+```
+
+## 9. 基础检查
 
 在 VPS 上执行：
 
@@ -154,11 +212,13 @@ source .env
 curl http://127.0.0.1:4210/health
 curl -H "Authorization: Bearer $API_AUTH_TOKEN" http://127.0.0.1:4210/snapshot
 curl -H "Authorization: Bearer $API_AUTH_TOKEN" http://127.0.0.1:4210/journal
+curl -H "Authorization: Bearer $API_AUTH_TOKEN" http://127.0.0.1:4210/settings
+curl -H "Authorization: Bearer $API_AUTH_TOKEN" "http://127.0.0.1:4210/logs?limit=20"
 ```
 
 如果返回 JSON，说明 API 正常。
 
-## 8. 协议核验
+## 10. 协议核验
 
 协议核验会检查官方 42space 部署文档、官方合约仓库、源码关键函数、近期交易回执。
 
@@ -182,7 +242,7 @@ data/protocol-verification-latest.json
 
 如果 `liveReady=false`，不要做实盘。
 
-## 9. 第一次小额实盘前检查
+## 11. 第一次小额实盘前检查
 
 确认 `.env`：
 
@@ -209,11 +269,11 @@ docker compose up -d --build
 钱包里只放测试资金，例如：
 
 - 3-10 USDT
-- 少量 BNB 作为 gas
+- 少量 BNB 作为燃料费
 
-## 10. 找一个市场和 tokenId
+## 12. 找一个市场和结果编号
 
-在面板里看候选市场，或从 API 拉市场：
+在面板里看候选市场，或从接口拉市场：
 
 ```bash
 source .env
@@ -227,9 +287,9 @@ curl -H "Authorization: Bearer $API_AUTH_TOKEN" http://127.0.0.1:4210/snapshot >
 
 先选小额测试，不要追高，不要 all-in。
 
-## 11. 先生成计划，不执行
+## 13. 先生成计划，不执行
 
-把下面命令里的 `0xMarket` 和 `tokenId` 换成真实值：
+把下面命令里的 `0xMarket` 和结果编号换成真实值：
 
 ```bash
 npm run live:buy -- --market 0xMarket --tokenId 1 --amountUsdt 3 --slippageBps 500 --reason "first public rpc J/U test"
@@ -238,9 +298,9 @@ npm run live:buy -- --market 0xMarket --tokenId 1 --amountUsdt 3 --slippageBps 5
 不带 `--execute` 时不会发交易，只会：
 
 - 生成执行计划
-- 做 quote
+- 做报价
 - 检查余额
-- 检查 gas
+- 检查燃料费
 - 做 `eth_call`
 - 写交易账本
 
@@ -254,7 +314,9 @@ npm run live:buy -- --market 0xMarket --tokenId 1 --amountUsdt 3 --slippageBps 5
 
 如果不满足，不要加 `--execute`。
 
-## 12. 小额执行
+命令行会读取 `data/settings.json`，所以面板里改过的实盘模式、熔断、单笔上限、滑点上限会影响这一步。
+
+## 14. 小额执行
 
 确认计划无误后，再执行：
 
@@ -276,7 +338,7 @@ sed -i 's/^KILL_SWITCH=false/KILL_SWITCH=true/' .env
 docker compose up -d --build
 ```
 
-## 13. 注册免费 BNB RPC
+## 15. 注册免费 BNB RPC
 
 公共 RPC 能跑通流程，但不稳定、限速、延迟也高。小额流程确认后建议注册一个免费 RPC。
 
@@ -319,7 +381,7 @@ npm run verify:protocol
 docker compose up -d --build
 ```
 
-## 14. 更新代码
+## 16. 更新代码
 
 ```bash
 cd /opt/42bot
@@ -335,7 +397,7 @@ npm install
 npm run verify
 ```
 
-## 15. 常用排错
+## 17. 常用排错
 
 查看服务：
 
@@ -374,17 +436,29 @@ ss -lntp | grep -E '4210|4220'
 cat data/journal.json
 ```
 
-## 16. 安全底线
+查看运行设置：
+
+```bash
+cat data/settings.json
+```
+
+查看运行日志：
+
+```bash
+cat data/runtime-log.json
+```
+
+## 18. 安全底线
 
 - `.env` 不进 Git。
 - 私钥只放 VPS 的 `.env`。
-- 不要把私钥、RPC token、API token 发到聊天或截图。
+- 不要把私钥、RPC 登录令牌、面板登录令牌发到聊天或截图。
 - 实盘只用专用小额热钱包。
 - 没测试时保持 `KILL_SWITCH=true`。
 - 单笔先用 1-3 USDT。
 - 公共 RPC 只用于跑通流程，不用于高频狙击。
 
-## 17. 官方参考
+## 19. 官方参考
 
 - BNB Chain RPC 文档：`https://docs.bnbchain.org/bnb-smart-chain/developers/json_rpc/json-rpc-endpoint/`
 - 42space 官方 REST：`https://rest.ft.42.space`
