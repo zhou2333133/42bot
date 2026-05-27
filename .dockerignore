@@ -6,6 +6,9 @@ data
 node_modules
 **/node_modules
 **/dist
+**/dist-types
+*.tsbuildinfo
+**/*.tsbuildinfo
 npm-debug.log*
 Dockerfile
 docker-compose.yml

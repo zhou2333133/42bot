@@ -10,7 +10,10 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "@42bot/core": ["packages/core/src/index.ts"]
+    },
     "noUncheckedIndexedAccess": true
   }
 }
-
