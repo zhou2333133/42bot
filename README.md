@@ -25,6 +25,14 @@ curl "http://localhost:4210/execution/plan?marketAddress=0x...&tokenId=1&amountU
 
 该接口只返回风险、协议、quote、gas、交易 calldata 和阻断原因；API/面板当前不会签名或广播。
 
+手动小额实盘 CLI：
+
+```bash
+npm run live:buy -- --market 0x... --tokenId 1 --amountUsdt 3 --slippageBps 500
+```
+
+不带 `--execute` 时只生成计划并写 journal；带 `--execute` 时仍必须通过所有 live gate 才会广播。
+
 ## 阶段说明
 
 - Phase 0: 项目约束、协议事实边界和 Git 仓库初始化。
@@ -36,7 +44,8 @@ curl "http://localhost:4210/execution/plan?marketAddress=0x...&tokenId=1&amountU
 - Phase 6: VPS/API 安全加固、token 鉴权、Docker healthcheck 和部署 runbook。
 - Phase 7: JSON 交易账本、持仓汇总和面板 PnL 摘要。
 - Phase 8: 协议 gate 精细化，区分 blocking/nonblocking checks，当前关键路径 `liveReady=true`。
-- Phase 9: J/U 级别小额实盘，逐笔日志、面板 PnL、熔断和人工确认。
+- Phase 9: 手动 live-buy CLI，复用所有 gate，成功/失败/阻断都写 journal。
+- Phase 10: J/U 级别小额实盘观察、自动退出和更完整的持仓数量核算。
 
 阶段记录：
 
@@ -47,6 +56,7 @@ curl "http://localhost:4210/execution/plan?marketAddress=0x...&tokenId=1&amountU
 - [docs/phase-5.md](docs/phase-5.md)
 - [docs/phase-7.md](docs/phase-7.md)
 - [docs/phase-8.md](docs/phase-8.md)
+- [docs/phase-9.md](docs/phase-9.md)
 - [docs/protocol-verification-latest.md](docs/protocol-verification-latest.md)
 - [docs/vps-deploy.md](docs/vps-deploy.md)
 

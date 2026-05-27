@@ -92,3 +92,33 @@ Before the first small trade:
 - `MAX_TRADE_USDT` and `DAILY_MAX_USDT` are tiny.
 - `KILL_SWITCH=false` only for the test window.
 - After the test, set `KILL_SWITCH=true` again.
+
+## 7. Manual J/U Live Buy
+
+First run without `--execute`:
+
+```bash
+npm run live:buy -- --market 0xMarket --tokenId 1 --amountUsdt 3 --slippageBps 500 --reason "first J/U test"
+```
+
+Review the printed JSON:
+
+- `preconditionsReady` must be `true`.
+- `broadcastReady` must be `true`.
+- `blockedReasons` must be empty or only nonblocking protocol notes.
+- Required transactions must show `call=passed` and `gas=passed`.
+
+Only then run the explicit execution command:
+
+```bash
+npm run live:buy -- --market 0xMarket --tokenId 1 --amountUsdt 3 --slippageBps 500 --reason "first J/U test" --execute
+```
+
+The command writes the result to `JOURNAL_FILE`. After the test:
+
+```bash
+docker compose logs --tail=200 bot
+curl -H "Authorization: Bearer $API_AUTH_TOKEN" http://127.0.0.1:4210/journal
+```
+
+Then set `KILL_SWITCH=true` again.

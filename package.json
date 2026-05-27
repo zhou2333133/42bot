@@ -17,6 +17,7 @@
     "dev:api": "npm --workspace @42bot/api run dev",
     "dev:bot": "npm --workspace @42bot/bot run dev",
     "dev:dashboard": "npm --workspace @42bot/dashboard run dev",
+    "live:buy": "npm --workspace @42bot/bot run live:buy --",
     "start:api": "npm --workspace @42bot/api run start",
     "start:bot": "npm --workspace @42bot/bot run start"
   },
