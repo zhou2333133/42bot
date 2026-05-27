@@ -45,6 +45,8 @@ const envSchema = z.object({
   STATE_FILE: z.string().default("./data/state.json"),
   API_HOST: z.string().default("0.0.0.0"),
   API_PORT: numberString(4210),
+  API_AUTH_TOKEN: z.string().optional().default(""),
+  CORS_ORIGIN: z.string().optional().default(""),
   VITE_API_BASE: z.string().default("http://localhost:4210")
 });
 
@@ -62,11 +64,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 
 export function redactConfig(
   config: AppConfig
-): Omit<AppConfig, "PRIVATE_KEY" | "BSC_HTTP_RPC" | "BSC_WS_RPC"> & { PRIVATE_KEY: string; BSC_HTTP_RPC: string; BSC_WS_RPC: string } {
+): Omit<AppConfig, "PRIVATE_KEY" | "BSC_HTTP_RPC" | "BSC_WS_RPC" | "API_AUTH_TOKEN"> & {
+  PRIVATE_KEY: string;
+  BSC_HTTP_RPC: string;
+  BSC_WS_RPC: string;
+  API_AUTH_TOKEN: string;
+} {
   return {
     ...config,
     BSC_HTTP_RPC: config.BSC_HTTP_RPC ? "[redacted]" : "",
     BSC_WS_RPC: config.BSC_WS_RPC ? "[redacted]" : "",
+    API_AUTH_TOKEN: config.API_AUTH_TOKEN ? "[redacted]" : "",
     PRIVATE_KEY: config.PRIVATE_KEY ? "[redacted]" : ""
   };
 }

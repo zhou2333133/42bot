@@ -43,6 +43,7 @@ curl "http://localhost:4210/execution/plan?marketAddress=0x...&tokenId=1&amountU
 - [docs/phase-4.md](docs/phase-4.md)
 - [docs/phase-5.md](docs/phase-5.md)
 - [docs/protocol-verification-latest.md](docs/protocol-verification-latest.md)
+- [docs/vps-deploy.md](docs/vps-deploy.md)
 
 ## 阶段门禁
 

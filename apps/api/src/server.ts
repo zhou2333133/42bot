@@ -8,13 +8,21 @@ import {
   redactConfig
 } from "@42bot/core";
 import type { BotSnapshot, ExecutionPlan, MarketScore, TradeIntent, TradeSide } from "@42bot/core";
+import { applySecurityHeaders, requireApiAuth } from "./security.js";
 
 const config = loadConfig();
 const store = new JsonStateStore(config.STATE_FILE);
 const app = express();
 
-app.use(cors());
+app.use(applySecurityHeaders);
+app.use(
+  cors({
+    origin: config.CORS_ORIGIN || true,
+    credentials: Boolean(config.API_AUTH_TOKEN)
+  })
+);
 app.use(express.json({ limit: "256kb" }));
+app.use(requireApiAuth(config));
 
 let cachedSnapshot: BotSnapshot | null = null;
 let refreshInFlight: Promise<BotSnapshot> | null = null;
@@ -107,7 +115,16 @@ app.use((error: unknown, _request: express.Request, response: express.Response, 
 });
 
 app.listen(config.API_PORT, config.API_HOST, () => {
-  console.log(JSON.stringify({ level: "info", service: "api", event: "listening", host: config.API_HOST, port: config.API_PORT }));
+  console.log(
+    JSON.stringify({
+      level: "info",
+      service: "api",
+      event: "listening",
+      host: config.API_HOST,
+      port: config.API_PORT,
+      authEnabled: Boolean(config.API_AUTH_TOKEN)
+    })
+  );
 });
 
 async function loadSnapshot(): Promise<BotSnapshot> {
