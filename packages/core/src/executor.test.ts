@@ -3,13 +3,15 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { decodeFunctionData, type Address, type PublicClient } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { erc20Abi, ftRouterV2Abi } from "./abis.js";
 import { loadConfig } from "./config.js";
 import { BUSDT_ADDRESS, CONTRACT_CANDIDATES } from "./constants.js";
-import { buildExecutionPlan } from "./executor.js";
+import { LIVE_TRADING_CONFIRMATION_PHRASE, buildExecutionPlan, executePreparedPlan, type BroadcastWalletClient } from "./executor.js";
 
 const market = "0x0000000000000000000000000000000000000002" as Address;
-const wallet = "0x0000000000000000000000000000000000000001" as Address;
+const privateKey = "0x0123456789012345678901234567890123456789012345678901234567890123";
+const wallet = privateKeyToAccount(privateKey).address;
 
 describe("buildExecutionPlan", () => {
   it("blocks by default before touching chain preflight", async () => {
@@ -40,7 +42,7 @@ describe("buildExecutionPlan", () => {
         KILL_SWITCH: "false",
         BSC_HTTP_RPC: "https://example.invalid",
         WALLET_ADDRESS: wallet,
-        PRIVATE_KEY: "redacted",
+        PRIVATE_KEY: privateKey,
         PROTOCOL_REPORT_JSON_PATH: protocolPath
       }),
       intent: {
@@ -58,6 +60,7 @@ describe("buildExecutionPlan", () => {
     expect(plan.quoteCheck.status).toBe("passed");
     expect(plan.transactions.map((tx) => tx.kind)).toEqual(["approve", "swap"]);
     expect(plan.broadcastReady).toBe(false);
+    expect(plan.broadcastReadiness.reasons.join(" ")).toContain("LIVE_TRADING_CONFIRMATION");
 
     const approve = plan.transactions[0];
     expect(approve?.to).toBe(BUSDT_ADDRESS);
@@ -104,6 +107,109 @@ describe("buildExecutionPlan", () => {
     expect(plan.preconditionsReady).toBe(false);
     expect(plan.blockedReasons.join(" ")).toContain("协议核验未 liveReady");
   });
+
+  it("refuses to execute plans without the live confirmation phrase", async () => {
+    const protocolPath = await writeProtocolReport(true);
+    const config = loadConfig({
+      LIVE_TRADING: "true",
+      KILL_SWITCH: "false",
+      BSC_HTTP_RPC: "https://example.invalid",
+      WALLET_ADDRESS: wallet,
+      PRIVATE_KEY: privateKey,
+      PROTOCOL_REPORT_JSON_PATH: protocolPath
+    });
+    const plan = await buildExecutionPlan({
+      config,
+      intent: {
+        marketAddress: market,
+        tokenId: "1",
+        amountUsdt: 3,
+        slippageBps: 500,
+        reason: "test"
+      },
+      publicClient: fakePublicClient(),
+      skipChainPreflight: true
+    });
+
+    const result = await executePreparedPlan({ config, plan, publicClient: fakePublicClient() });
+
+    expect(result.status).toBe("blocked");
+    expect(result.blockedReasons.join(" ")).toContain("LIVE_TRADING_CONFIRMATION");
+  });
+
+  it("still refuses to execute when confirmation is set but preflight did not pass", async () => {
+    const protocolPath = await writeProtocolReport(true);
+    const config = loadConfig({
+      LIVE_TRADING: "true",
+      KILL_SWITCH: "false",
+      LIVE_TRADING_CONFIRMATION: LIVE_TRADING_CONFIRMATION_PHRASE,
+      BSC_HTTP_RPC: "https://example.invalid",
+      WALLET_ADDRESS: wallet,
+      PRIVATE_KEY: privateKey,
+      PROTOCOL_REPORT_JSON_PATH: protocolPath
+    });
+    const plan = await buildExecutionPlan({
+      config,
+      intent: {
+        marketAddress: market,
+        tokenId: "1",
+        amountUsdt: 3,
+        slippageBps: 500,
+        reason: "test"
+      },
+      publicClient: fakePublicClient(),
+      skipChainPreflight: true
+    });
+
+    const result = await executePreparedPlan({ config, plan, publicClient: fakePublicClient() });
+
+    expect(result.status).toBe("blocked");
+    expect(result.blockedReasons).toContain("execution plan preconditionsReady=false");
+    expect(result.blockedReasons).toContain("required transaction eth_call did not pass");
+  });
+
+  it("submits required transactions with injected clients only after all gates pass", async () => {
+    const protocolPath = await writeProtocolReport(true);
+    const config = loadConfig({
+      LIVE_TRADING: "true",
+      KILL_SWITCH: "false",
+      LIVE_TRADING_CONFIRMATION: LIVE_TRADING_CONFIRMATION_PHRASE,
+      BSC_HTTP_RPC: "https://example.invalid",
+      WALLET_ADDRESS: wallet,
+      PRIVATE_KEY: privateKey,
+      PROTOCOL_REPORT_JSON_PATH: protocolPath
+    });
+    const plan = await buildExecutionPlan({
+      config,
+      intent: {
+        marketAddress: market,
+        tokenId: "1",
+        amountUsdt: 3,
+        slippageBps: 500,
+        reason: "test"
+      },
+      publicClient: fakePublicClient({ preflightPasses: true })
+    });
+    const walletClient = fakeWalletClient();
+
+    expect(plan.preconditionsReady).toBe(true);
+    expect(plan.broadcastReady).toBe(true);
+
+    const result = await executePreparedPlan({
+      config,
+      plan,
+      publicClient: fakePublicClient({ preflightPasses: true }),
+      walletClient
+    });
+
+    expect(result.blockedReasons).toEqual([]);
+    expect(result.status).toBe("submitted");
+    expect(result.executed.map((tx) => tx.kind)).toEqual(["approve", "swap"]);
+    expect(result.executed.map((tx) => tx.hash)).toEqual([
+      "0x000000000000000000000000000000000000000000000000000000000000000a",
+      "0x000000000000000000000000000000000000000000000000000000000000000b"
+    ]);
+  });
 });
 
 async function writeProtocolReport(liveReady: boolean): Promise<string> {
@@ -123,7 +229,7 @@ async function writeProtocolReport(liveReady: boolean): Promise<string> {
   return path;
 }
 
-function fakePublicClient(): PublicClient {
+function fakePublicClient(options: { preflightPasses?: boolean } = {}): PublicClient {
   return {
     getGasPrice: async () => 1_000_000_000n,
     simulateContract: async () => ({
@@ -143,6 +249,25 @@ function fakePublicClient(): PublicClient {
       if (params.functionName === "balanceOf") return 10_000_000_000_000_000_000n;
       if (params.functionName === "isOperator") return false;
       throw new Error(`unexpected read ${String(params.functionName)}`);
+    },
+    call: async () => {
+      if (!options.preflightPasses) throw new Error("preflight disabled in fake client");
+      return { data: "0x" };
+    },
+    estimateGas: async () => {
+      if (!options.preflightPasses) throw new Error("preflight disabled in fake client");
+      return 100_000n;
     }
   } as unknown as PublicClient;
+}
+
+function fakeWalletClient(): BroadcastWalletClient {
+  const hashes = [
+    "0x000000000000000000000000000000000000000000000000000000000000000a",
+    "0x000000000000000000000000000000000000000000000000000000000000000b"
+  ] as const;
+  let index = 0;
+  return {
+    sendTransaction: async () => hashes[index++] ?? hashes[1]
+  };
 }

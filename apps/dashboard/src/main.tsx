@@ -158,7 +158,13 @@ interface ExecutionPlan {
     };
   }>;
   preconditionsReady: boolean;
-  broadcastReady: false;
+  broadcastReady: boolean;
+  broadcastReadiness: {
+    ready: boolean;
+    configured: boolean;
+    requiredConfirmation: string;
+    reasons: string[];
+  };
   blockedReasons: string[];
 }
 
@@ -321,7 +327,7 @@ function App() {
               <Risk label="Quote" value={executionPlan?.quoteCheck.status ?? "-"} />
               <Risk label="Gas" value={executionPlan?.gas.gasPriceGwei ? `${Number(executionPlan.gas.gasPriceGwei).toFixed(3)} gwei` : executionPlan?.gas.status ?? "-"} />
               <Risk label="Preconditions" value={executionPlan?.preconditionsReady ? "ready" : "not ready"} />
-              <Risk label="Broadcast" value="disabled" />
+              <Risk label="Broadcast" value={executionPlan?.broadcastReady ? "ready" : "blocked"} />
             </div>
           </div>
           <div className="panel">

@@ -13,7 +13,7 @@ What was added:
   - builds exact BUSDT approve + router buy swap transactions
   - builds sell-path operator + router sell swap transactions for the later position module
   - can run `eth_call` and gas estimation for every required transaction
-  - always returns `broadcastReady=false`
+  - Phase 4 returned a non-broadcast execution plan; Phase 5 adds a gated core broadcaster without exposing it through API/dashboard
 - API endpoint:
   - `GET /execution/plan?marketAddress=...&tokenId=...&amountUsdt=...&slippageBps=...`
 - Dashboard section:

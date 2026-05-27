@@ -263,6 +263,13 @@ export interface GasReadiness {
   reasons: string[];
 }
 
+export interface BroadcastReadiness {
+  ready: boolean;
+  configured: boolean;
+  requiredConfirmation: string;
+  reasons: string[];
+}
+
 export interface ExecutionPlan {
   createdAt: string;
   side: TradeSide;
@@ -276,9 +283,40 @@ export interface ExecutionPlan {
   balanceChecks: ExecutionCheck[];
   transactions: PreparedExecutionTransaction[];
   preconditionsReady: boolean;
-  broadcastImplemented: false;
-  broadcastReady: false;
+  broadcastImplemented: boolean;
+  broadcastReady: boolean;
+  broadcastReadiness: BroadcastReadiness;
   blockedReasons: string[];
+}
+
+export type ExecutionResultStatus = "blocked" | "submitted" | "confirmed" | "failed";
+
+export interface ExecutedTransaction {
+  kind: TransactionKind;
+  to: string;
+  description: string;
+  hash: `0x${string}`;
+  receipt?: {
+    status: "success" | "reverted";
+    blockNumber?: string;
+    gasUsed?: string;
+  };
+}
+
+export interface ExecutionResult {
+  createdAt: string;
+  status: ExecutionResultStatus;
+  side: TradeSide;
+  intent: TradeIntent;
+  executed: ExecutedTransaction[];
+  skipped: Array<{
+    kind: TransactionKind;
+    to: string;
+    description: string;
+    reason: string;
+  }>;
+  blockedReasons: string[];
+  error?: string;
 }
 
 export interface BotSnapshot {

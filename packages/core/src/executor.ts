@@ -1,11 +1,14 @@
 import {
   createPublicClient,
+  createWalletClient,
   formatUnits,
   http,
   isAddress,
   type Address,
+  type Hex,
   type PublicClient
 } from "viem";
+import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import { bsc } from "viem/chains";
 import type { AppConfig } from "./config.js";
 import { erc20Abi, erc6909Abi } from "./abis.js";
@@ -24,6 +27,7 @@ import {
 import type {
   ExecutionCheck,
   ExecutionPlan,
+  ExecutionResult,
   GasReadiness,
   PreparedExecutionTransaction,
   PreparedTransaction,
@@ -32,6 +36,18 @@ import type {
   TradeSide,
   TransactionKind
 } from "./types.js";
+
+export const LIVE_TRADING_CONFIRMATION_PHRASE = "I_UNDERSTAND_42BOT_LIVE_RISK";
+
+export interface BroadcastWalletClient {
+  sendTransaction(args: {
+    account: PrivateKeyAccount;
+    chain: typeof bsc;
+    to: Address;
+    data: Hex;
+    value: bigint;
+  }): Promise<Hex>;
+}
 
 export interface BuildExecutionPlanOptions {
   config: AppConfig;
@@ -185,6 +201,12 @@ export async function buildExecutionPlan(options: BuildExecutionPlanOptions): Pr
     balanceChecks.every((check) => check.status !== "failed") &&
     transactions.filter((tx) => tx.required).every((tx) => tx.preflight.call.status === "passed" && tx.preflight.gas.status === "passed");
 
+  const broadcastReadiness = evaluateBroadcastReadiness(options.config, preconditionsReady);
+  const blockedReasonList = [
+    ...blockedReasons,
+    ...broadcastReadiness.reasons
+  ];
+
   return {
     createdAt: new Date().toISOString(),
     side,
@@ -198,12 +220,138 @@ export async function buildExecutionPlan(options: BuildExecutionPlanOptions): Pr
     balanceChecks,
     transactions,
     preconditionsReady,
-    broadcastImplemented: false,
-    broadcastReady: false,
-    blockedReasons: [
-      ...blockedReasons,
-      "Phase 4 只生成 dry-run/preflight 执行计划；签名和广播模块尚未实现"
-    ]
+    broadcastImplemented: true,
+    broadcastReady: broadcastReadiness.ready,
+    broadcastReadiness,
+    blockedReasons: [...new Set(blockedReasonList)]
+  };
+}
+
+export async function executePreparedPlan(params: {
+  config: AppConfig;
+  plan: ExecutionPlan;
+  publicClient?: PublicClient;
+  walletClient?: BroadcastWalletClient;
+  account?: PrivateKeyAccount;
+  waitForReceipts?: boolean;
+}): Promise<ExecutionResult> {
+  const blockedReasons = validatePreparedPlanForBroadcast(params.config, params.plan);
+  if (blockedReasons.length > 0) {
+    return {
+      createdAt: new Date().toISOString(),
+      status: "blocked",
+      side: params.plan.side,
+      intent: params.plan.intent,
+      executed: [],
+      skipped: params.plan.transactions.map((tx) => ({
+        kind: tx.kind,
+        to: tx.to,
+        description: tx.description,
+        reason: tx.required ? blockedReasons.join("; ") : "not required"
+      })),
+      blockedReasons
+    };
+  }
+
+  const account = params.account ?? privateKeyToAccount(params.config.PRIVATE_KEY as Hex);
+  if (account.address.toLowerCase() !== params.config.WALLET_ADDRESS.toLowerCase()) {
+    return {
+      createdAt: new Date().toISOString(),
+      status: "blocked",
+      side: params.plan.side,
+      intent: params.plan.intent,
+      executed: [],
+      skipped: params.plan.transactions.map((tx) => ({
+        kind: tx.kind,
+        to: tx.to,
+        description: tx.description,
+        reason: "private key address does not match WALLET_ADDRESS"
+      })),
+      blockedReasons: ["PRIVATE_KEY 推导地址与 WALLET_ADDRESS 不一致"]
+    };
+  }
+
+  const publicClient = params.publicClient ?? createBscClient(params.config.BSC_HTTP_RPC);
+  const walletClient: BroadcastWalletClient =
+    params.walletClient ??
+    (createWalletClient({
+      account,
+      chain: bsc,
+      transport: http(params.config.BSC_HTTP_RPC)
+    }) as unknown as BroadcastWalletClient);
+  const executed: ExecutionResult["executed"] = [];
+  const skipped: ExecutionResult["skipped"] = [];
+
+  for (const tx of params.plan.transactions) {
+    if (!tx.required) {
+      skipped.push({
+        kind: tx.kind,
+        to: tx.to,
+        description: tx.description,
+        reason: "not required"
+      });
+      continue;
+    }
+
+    try {
+      const hash = await walletClient.sendTransaction({
+        account,
+        chain: bsc,
+        to: tx.to as Address,
+        data: tx.data,
+        value: tx.value
+      });
+      const executedTx: ExecutionResult["executed"][number] = {
+        kind: tx.kind,
+        to: tx.to,
+        description: tx.description,
+        hash
+      };
+
+      if (params.waitForReceipts) {
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        executedTx.receipt = {
+          status: receipt.status,
+          blockNumber: receipt.blockNumber.toString(),
+          gasUsed: receipt.gasUsed.toString()
+        };
+        if (receipt.status !== "success") {
+          return {
+            createdAt: new Date().toISOString(),
+            status: "failed",
+            side: params.plan.side,
+            intent: params.plan.intent,
+            executed: [...executed, executedTx],
+            skipped,
+            blockedReasons: [],
+            error: `${tx.kind} transaction reverted`
+          };
+        }
+      }
+
+      executed.push(executedTx);
+    } catch (error) {
+      return {
+        createdAt: new Date().toISOString(),
+        status: "failed",
+        side: params.plan.side,
+        intent: params.plan.intent,
+        executed,
+        skipped,
+        blockedReasons: [],
+        error: errorMessage(error)
+      };
+    }
+  }
+
+  return {
+    createdAt: new Date().toISOString(),
+    status: params.waitForReceipts ? "confirmed" : "submitted",
+    side: params.plan.side,
+    intent: params.plan.intent,
+    executed,
+    skipped,
+    blockedReasons: []
   };
 }
 
@@ -224,6 +372,45 @@ function emptyRiskState(): RiskState {
     openPositions: 0,
     consecutiveFailures: 0
   };
+}
+
+function evaluateBroadcastReadiness(config: AppConfig, preconditionsReady: boolean) {
+  const reasons: string[] = [];
+  if (!preconditionsReady) reasons.push("dry-run/preflight preconditions 未全部通过");
+  if (config.LIVE_TRADING_CONFIRMATION !== LIVE_TRADING_CONFIRMATION_PHRASE) {
+    reasons.push(`LIVE_TRADING_CONFIRMATION 必须精确设置为 ${LIVE_TRADING_CONFIRMATION_PHRASE}`);
+  }
+
+  return {
+    ready: reasons.length === 0,
+    configured: config.LIVE_TRADING_CONFIRMATION === LIVE_TRADING_CONFIRMATION_PHRASE,
+    requiredConfirmation: LIVE_TRADING_CONFIRMATION_PHRASE,
+    reasons
+  };
+}
+
+function validatePreparedPlanForBroadcast(config: AppConfig, plan: ExecutionPlan): string[] {
+  const reasons: string[] = [];
+  if (!config.LIVE_TRADING) reasons.push("LIVE_TRADING 未开启");
+  if (config.KILL_SWITCH) reasons.push("kill switch 已启用");
+  if (!config.BSC_HTTP_RPC) reasons.push("BSC_HTTP_RPC 未配置");
+  if (!config.PRIVATE_KEY) reasons.push("PRIVATE_KEY 未配置");
+  if (!isAddress(config.WALLET_ADDRESS)) reasons.push("WALLET_ADDRESS 未配置或格式错误");
+  if (config.LIVE_TRADING_CONFIRMATION !== LIVE_TRADING_CONFIRMATION_PHRASE) {
+    reasons.push(`LIVE_TRADING_CONFIRMATION 必须精确设置为 ${LIVE_TRADING_CONFIRMATION_PHRASE}`);
+  }
+  if (!plan.preconditionsReady) reasons.push("execution plan preconditionsReady=false");
+  if (!plan.broadcastReady) reasons.push("execution plan broadcastReady=false");
+  if (!plan.protocolGate.liveReady) reasons.push("protocol gate liveReady=false");
+  if (!plan.risk.allowed) reasons.push("risk engine blocked the trade");
+  if (!plan.readiness.ready) reasons.push("execution readiness blocked the trade");
+  if (!plan.gas.withinCap) reasons.push("gas price exceeds cap or was not checked");
+  if (plan.quoteCheck.status !== "passed") reasons.push("quote check did not pass");
+  if (plan.balanceChecks.some((check) => check.status === "failed")) reasons.push("balance check failed");
+  if (plan.transactions.length === 0) reasons.push("no transactions in execution plan");
+  if (plan.transactions.some((tx) => tx.required && tx.preflight.call.status !== "passed")) reasons.push("required transaction eth_call did not pass");
+  if (plan.transactions.some((tx) => tx.required && tx.preflight.gas.status !== "passed")) reasons.push("required transaction gas estimate did not pass");
+  return [...new Set(reasons)];
 }
 
 function createBscClient(rpcUrl: string): PublicClient {

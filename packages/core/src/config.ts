@@ -34,6 +34,7 @@ const envSchema = z.object({
   MAX_SLIPPAGE_BPS: numberString(1000),
   MAX_GAS_GWEI: numberString(5),
   KILL_SWITCH: booleanString.default(true),
+  LIVE_TRADING_CONFIRMATION: z.string().optional().default(""),
   INTEGRATOR_ADDRESS: z.string().optional().default(""),
   INTEGRATOR_FEE_BPS: numberString(0),
   PROTOCOL_REPORT_JSON_PATH: z.string().default("./data/protocol-verification-latest.json"),
