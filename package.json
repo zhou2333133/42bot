@@ -5,13 +5,15 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "tools/*"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "typecheck": "tsc -b",
     "test": "vitest run",
     "verify": "npm run typecheck && npm run test && npm run build",
+    "verify:protocol": "npm --workspace @42bot/protocol-verify run verify",
     "dev:api": "npm --workspace @42bot/api run dev",
     "dev:bot": "npm --workspace @42bot/bot run dev",
     "dev:dashboard": "npm --workspace @42bot/dashboard run dev",

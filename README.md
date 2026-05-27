@@ -25,7 +25,11 @@ API 默认监听 `http://localhost:4210`，面板默认监听 `http://localhost:
 - Phase 3: quote + `eth_call` + 交易编码，默认 dry-run，被硬风控拦截。
 - Phase 4: J/U 级别小额实盘，逐笔日志、面板 PnL、熔断和人工确认。
 
-详见 [docs/phase-1.md](docs/phase-1.md)。
+阶段记录：
+
+- [docs/phase-1.md](docs/phase-1.md)
+- [docs/phase-2.md](docs/phase-2.md)
+- [docs/protocol-verification-latest.md](docs/protocol-verification-latest.md)
 
 ## 阶段门禁
 

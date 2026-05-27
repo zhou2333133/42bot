@@ -4,7 +4,7 @@
     { "path": "./packages/core" },
     { "path": "./apps/api" },
     { "path": "./apps/bot" },
-    { "path": "./apps/dashboard" }
+    { "path": "./apps/dashboard" },
+    { "path": "./tools/protocol-verify" }
   ]
 }
-
